@@ -126,17 +126,17 @@ func deleteExistingRelease(version string) {
 	run("gh release delete --yes", version)
 }
 
-func publishReleaseNow(version string, published *bool) {
+func publishReleaseNow(version string) {
 	fmt.Println("Publishing release right now")
 	runSilent("gh release edit", version, "--draft=false")
 
 	// We re-fetch the releaseURL here because it changed from before publish
 	fmt.Printf("Release published at %s\n", releaseURL(version))
 
+	cli.ExitHandler(deleteTagExitHandlerID, nil)
+
 	zlog.Debug("refreshing git tags now that release happened")
 	runSilent(fmt.Sprintf(`git fetch origin +refs/tags/%s:refs/tags/%s`, version, version))
-
-	*published = true
 }
 
 func reviewRelease(releaseURL string) {

@@ -9,7 +9,7 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
-	github.com/streamingfast/cli v0.0.4-0.20230420050158-aee4f9637f40
+	github.com/streamingfast/cli v0.0.4-0.20230420210357-3bebdb9f2fbf
 	github.com/streamingfast/logging v0.0.0-20221209193439-bff11742bf4c
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.21.0

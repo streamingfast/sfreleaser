@@ -94,7 +94,7 @@ func runSilent(inputs ...string) (output string, err error) {
 	output, info, err := internalMaybeRun(inputs, true)
 	if err != nil {
 		zlog.Debug("run command failed", zap.Stringer("cmd", info), zap.Error(err), zap.String("output", output))
-		osExit(1)
+		cli.Exit(1)
 	}
 
 	return output, nil

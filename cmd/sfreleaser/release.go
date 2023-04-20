@@ -19,6 +19,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const deleteTagExitHandlerID = "delete-tag"
+
 var ReleaseCmd = Command(release,
 	"release [<version>]",
 	"Perform the actual release",
@@ -60,23 +62,22 @@ var ReleaseCmd = Command(release,
 
 		go func() {
 			<-sigs
-			osExit(1)
+			cli.Exit(1)
 		}()
 
-		cli.OnQuit = func(message string) {
-			if message != "" {
-				fmt.Println(message)
-			}
-			osExit(1)
-		}
-
 		if err := release(cmd, args); err != nil {
-			fmt.Println("Error", err.Error())
-			osExit(1)
+			// Let the normal flow happen, we trap error and exit properly
+			return err
 		}
 
-		osExit(0)
+		// Forces our exit handler (if any) to run
+		cli.Exit(0)
 		return nil
+	}),
+	OnCommandError(func(err error) {
+		fmt.Println()
+		fmt.Println("Error:", err.Error())
+		cli.Exit(1)
 	}),
 )
 
@@ -152,12 +153,9 @@ func release(cmd *cobra.Command, args []string) error {
 	fmt.Println("Creating temporary tag so that goreleaser can work properly")
 	run("git tag", version)
 
-	publishedNowSuccesfully := false
-	onExits = append(onExits, func() {
-		if !publishedNowSuccesfully {
-			zlog.Debug("Deleting local temporary tag")
-			runSilent("git tag -d", version)
-		}
+	cli.ExitHandler(deleteTagExitHandlerID, func(_ int) {
+		zlog.Debug("Deleting local temporary tag")
+		runSilent("git tag -d", version)
 	})
 
 	if !devSkipGoreleaser {
@@ -169,7 +167,7 @@ func release(cmd *cobra.Command, args []string) error {
 			"run",
 			"--rm",
 			"-e CGO_ENABLED=1",
-			"--env-file", "build/.env.release",
+			"--env-file", "build/.env.r2elease",
 			"-v /var/run/docker.sock:/var/run/docker.sock",
 			"-v", cli.WorkingDirectory() + ":/go/src/work",
 			"-w /go/src/work",
@@ -197,7 +195,7 @@ func release(cmd *cobra.Command, args []string) error {
 	releaseURL := releaseURL(version)
 
 	if publishNow {
-		publishReleaseNow(version, &publishedNowSuccesfully)
+		publishReleaseNow(version)
 	} else {
 		fmt.Println()
 		fmt.Println(dedent(`
@@ -225,7 +223,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 		fmt.Println()
 		if yes, _ := cli.PromptConfirm("Publish release right now?"); yes {
-			publishReleaseNow(version, &publishedNowSuccesfully)
+			publishReleaseNow(version)
 		}
 
 		fmt.Println("Completed")

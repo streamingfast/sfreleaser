@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"unicode"
 
@@ -43,14 +42,4 @@ func mapEachReaderLine[T any](reader io.Reader, fn func(line string) T) (out []T
 // by calling for example [indentAllLines].
 func dedent(format string, args ...any) string {
 	return fmt.Sprintf(cli.Dedent(format), args...)
-}
-
-var onExits []func()
-
-func osExit(code int) {
-	for _, onExit := range onExits {
-		onExit()
-	}
-
-	os.Exit(code)
 }

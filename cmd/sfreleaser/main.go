@@ -6,6 +6,7 @@ import (
 	"os/exec"
 
 	"github.com/spf13/pflag"
+	"github.com/streamingfast/cli"
 	. "github.com/streamingfast/cli"
 	"go.uber.org/zap"
 )
@@ -61,6 +62,6 @@ func verifyCommand(command string, onErrorText string) {
 		fmt.Println()
 		fmt.Println(onErrorText)
 
-		osExit(1)
+		cli.Exit(1)
 	}
 }

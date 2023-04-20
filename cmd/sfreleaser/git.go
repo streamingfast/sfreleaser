@@ -80,7 +80,7 @@ func ensureGitNotDirty() {
 	if isGitDirty() {
 		fmt.Println("Your git repository is dirty, refusing to release (use --allow-dirty to releaser while being Git dirty)")
 		run("git status")
-		osExit(1)
+		cli.Exit(1)
 	}
 }
 
