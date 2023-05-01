@@ -126,7 +126,14 @@ func deleteExistingRelease(version string) {
 	run("gh release delete --yes", version)
 }
 
-func publishReleaseNow(version string) {
+func publishReleaseNow(global *GlobalModel, release *ReleaseModel) {
+	if global.Language == LanguageRust {
+		fmt.Println("Publishing Rust crates")
+		releaseRustPublishCrates(release.Rust)
+	}
+
+	version := release.Version
+
 	fmt.Println("Publishing release right now")
 	runSilent("gh release edit", version, "--draft=false")
 

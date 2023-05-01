@@ -55,6 +55,10 @@ var ReleaseCmd = Command(release,
 		flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps")
 		flags.String("upload-substreams-spkg", "", "If provided, add this Substreams package file to the release, if manifest is a 'substreams.yaml' file, the package is first built")
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
+
+		// Rust Flags
+		flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish' when publishing, the tool might provide some default on its own, Bash rules are used to split the arguments from the string")
+		flags.StringArray("rust-crates", nil, "[Rust only] The list of crates we should publish, the project is expected to be a workspace if this is used")
 	}),
 	Execute(func(cmd *cobra.Command, args []string) error {
 		sigs := make(chan os.Signal, 1)
@@ -93,12 +97,15 @@ func release(cmd *cobra.Command, args []string) error {
 	preBuildHooks := sflags.MustGetStringArray(cmd, "pre-build-hooks")
 	uploadSubstreamsSPKG := sflags.MustGetString(cmd, "upload-substreams-spkg")
 
+	release.populateLanguageSpecificModel(cmd, global.Language)
+
 	zlog.Debug("starting 'sfreleaser release'",
 		zap.Inline(global),
 		zap.Bool("allow_dirty", allowDirty),
 		zap.Bool("publish_now", publishNow),
 		zap.Strings("pre_build_hooks", preBuildHooks),
 		zap.String("upload_substreams_spkg", uploadSubstreamsSPKG),
+		zap.Reflect("release_model", release),
 	)
 
 	global.ensureValidForRelease()
@@ -158,34 +165,9 @@ func release(cmd *cobra.Command, args []string) error {
 		runSilent("git tag -d", version)
 	})
 
-	if !devSkipGoreleaser {
-		golangCrossVersion := "v1.20.2"
-		arguments := []string{
-			"docker",
-
-			// docker arguments
-			"run",
-			"--rm",
-			"-e CGO_ENABLED=1",
-			"--env-file", "build/.env.r2elease",
-			"-v /var/run/docker.sock:/var/run/docker.sock",
-			"-v", cli.WorkingDirectory() + ":/go/src/work",
-			"-w /go/src/work",
-			"goreleaser/goreleaser-cross:" + golangCrossVersion,
-
-			// goreleaser arguments
-			"--timeout=60m",
-			"--rm-dist",
-			"--release-notes=build/.release_notes.md",
-		}
-
-		if allowDirty {
-			arguments = append(arguments, "--skip-validate")
-		}
-
-		fmt.Println()
-		run(arguments...)
-	}
+	envFilePath := "build/.env.release"
+	releaseNotesPath := "build/.release_notes.md"
+	releaseGithub(allowDirty, envFilePath, releaseNotesPath)
 
 	if uploadSpkgPath != "" {
 		fmt.Printf("Uploading Substreams package file %q to release\n", filepath.Base(uploadSpkgPath))
@@ -195,7 +177,7 @@ func release(cmd *cobra.Command, args []string) error {
 	releaseURL := releaseURL(version)
 
 	if publishNow {
-		publishReleaseNow(version)
+		publishReleaseNow(global, release)
 	} else {
 		fmt.Println()
 		fmt.Println(dedent(`
@@ -223,7 +205,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 		fmt.Println()
 		if yes, _ := cli.PromptConfirm("Publish release right now?"); yes {
-			publishReleaseNow(version)
+			publishReleaseNow(global, release)
 		}
 
 		fmt.Println("Completed")

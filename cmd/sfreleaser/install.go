@@ -25,8 +25,11 @@ var goreleaserLibTmpl []byte
 //go:embed templates/CHANGELOG.md.gotmpl
 var changelogTmpl []byte
 
-//go:embed templates/sfreleaser.yaml.gotmpl
-var sfreleaserYamlTmpl []byte
+//go:embed templates/sfreleaser-golang.yaml.gotmpl
+var sfreleaserGolangYamlTmpl []byte
+
+//go:embed templates/sfreleaser-rust.yaml.gotmpl
+var sfreleaserRustYamlTmpl []byte
 
 var InstallCmd = Command(install,
 	"install",
@@ -85,6 +88,20 @@ func install(cmd *cobra.Command, _ []string) error {
 	}
 
 	renderTemplate(".goreleaser.yaml", overwrite, goreleaserTemplate, model)
+
+	var sfreleaserYamlTmpl []byte
+	switch language {
+	case LanguageGolang:
+		sfreleaserYamlTmpl = sfreleaserGolangYamlTmpl
+
+	case LanguageRust:
+		model = addRustModel(model)
+		sfreleaserYamlTmpl = sfreleaserRustYamlTmpl
+
+	default:
+		cli.Quit("unhandled language %q", language)
+	}
+
 	renderTemplate(".sfreleaser", overwrite, sfreleaserYamlTmpl, model)
 
 	if !cli.FileExists("CHANGELOG.md") {
@@ -118,4 +135,18 @@ func renderTemplate(file string, overwrite bool, tmplContent []byte, model map[s
 		cli.WriteFile(file, buffer.String())
 		fmt.Printf("Wrote %s\n", file)
 	}
+}
+
+type RustInstallModel struct {
+	Crates []string
+}
+
+func addRustModel(model map[string]any) map[string]any {
+	findAllRustCrates()
+
+	model["rust"] = &RustInstallModel{
+		Crates: []string{"substreams-macro", "substreams"},
+	}
+
+	return model
 }

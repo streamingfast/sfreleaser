@@ -64,4 +64,28 @@ func (g *GlobalModel) ensureValidForRelease() {
 
 type ReleaseModel struct {
 	Version string
+
+	// Rust is populated only if config if of type Rust
+	Rust *RustReleaseModel
+}
+
+func (m *ReleaseModel) populateLanguageSpecificModel(cmd *cobra.Command, language Language) {
+	switch language {
+	case LanguageGolang:
+		// Nothing
+
+	case LanguageRust:
+		m.Rust = &RustReleaseModel{}
+
+		m.Rust.CargoPublishArgs = unquotedFlatten(sflags.MustGetString(cmd, "rust-cargo-publish-args"))
+		m.Rust.Crates = sflags.MustGetStringArray(cmd, "rust-crates")
+
+	default:
+		cli.Quit("unhandled language %q", language)
+	}
+}
+
+type RustReleaseModel struct {
+	CargoPublishArgs []string
+	Crates           []string
 }

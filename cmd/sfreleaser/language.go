@@ -13,8 +13,9 @@ import (
 
 // ENUM(
 //
-//	Unset
-//	Golang
+//		Unset
+//		Golang
+//	 Rust
 //
 // )
 type Language uint

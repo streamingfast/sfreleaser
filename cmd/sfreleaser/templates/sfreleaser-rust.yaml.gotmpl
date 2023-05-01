@@ -1,0 +1,16 @@
+global:
+  language: {{ .language }}
+  variant: {{ .variant }}
+  {{- if .rust.Crates }}
+  release:
+    # This is the list of Rust crates that are going to be 'cargo publish'.
+    # **Important** Ordering must be strictly specified so that crates
+    # are ordered by dependency order, a crate that depends on another
+    # one should be listed below it's dependency.
+    #
+    # The generated values below are **unordered**, you must re-order them!
+    rust-crates:
+    {{- range $crate := .rust.Crates }}
+    - {{ $crate }}
+    {{- end }}
+  {{- end }}
