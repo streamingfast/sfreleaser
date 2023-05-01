@@ -71,6 +71,10 @@ func install(cmd *cobra.Command, _ []string) error {
 		variant = promptVariant()
 	}
 
+	if language == LanguageRust && variant == VariantApplication {
+		cli.Quit("Application variant for language Rust is currently not supported")
+	}
+
 	if root != "" {
 		cli.NoError(os.Chdir(root), "Unable to change directory to %q", root)
 	}
