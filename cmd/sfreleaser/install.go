@@ -40,61 +40,39 @@ var InstallCmd = Command(install,
 )
 
 func install(cmd *cobra.Command, _ []string) error {
-	language := mustGetLanguage(cmd)
-	variant := mustGetVariant(cmd)
-	root := sflags.MustGetString(cmd, "root")
+	global := mustGetGlobal(cmd)
 	overwrite := sflags.MustGetBool(cmd, "overwrite")
-	project := sflags.MustGetString(cmd, "project")
-
-	if project == "" {
-		target := root
-		if target == "" {
-			target = cli.WorkingDirectory()
-		}
-
-		project = filepath.Base(target)
-	}
 
 	zlog.Debug("starting 'sfreleaser install'",
-		zap.Stringer("language", language),
-		zap.Stringer("variant", variant),
-		zap.String("root", root),
+		zap.Inline(global),
 		zap.Bool("overwrite", overwrite),
-		zap.String("project", project),
 	)
 
-	if language == LanguageUnset {
-		language = promptLanguage()
+	if global.Language == LanguageUnset {
+		global.Language = promptLanguage()
 	}
 
-	if variant == VariantUnset {
-		variant = promptVariant()
+	if global.Variant == VariantUnset {
+		global.Variant = promptVariant()
 	}
 
-	if language == LanguageRust && variant == VariantApplication {
+	if global.Language == LanguageRust && global.Variant == VariantApplication {
 		cli.Quit("Application variant for language Rust is currently not supported")
 	}
 
-	if root != "" {
-		cli.NoError(os.Chdir(root), "Unable to change directory to %q", root)
-	}
+	cli.NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
 
-	model := map[string]any{
-		"binary":   project,
-		"project":  project,
-		"language": language.Lower(),
-		"variant":  variant.Lower(),
-	}
+	model := getInstallTemplateModel(global)
 
 	goreleaserTemplate := goreleaserAppTmpl
-	if variant == VariantLibrary {
+	if global.Variant == VariantLibrary {
 		goreleaserTemplate = goreleaserLibTmpl
 	}
 
-	renderTemplate(".goreleaser.yaml", overwrite, goreleaserTemplate, model)
+	renderTemplateAndReport(".goreleaser.yaml", overwrite, goreleaserTemplate, model)
 
 	var sfreleaserYamlTmpl []byte
-	switch language {
+	switch global.Language {
 	case LanguageGolang:
 		sfreleaserYamlTmpl = sfreleaserGolangYamlTmpl
 
@@ -103,14 +81,14 @@ func install(cmd *cobra.Command, _ []string) error {
 		sfreleaserYamlTmpl = sfreleaserRustYamlTmpl
 
 	default:
-		cli.Quit("unhandled language %q", language)
+		cli.Quit("unhandled language %q", global.Language)
 	}
 
-	renderTemplate(".sfreleaser", overwrite, sfreleaserYamlTmpl, model)
+	renderTemplateAndReport(".sfreleaser", overwrite, sfreleaserYamlTmpl, model)
 
 	if !cli.FileExists("CHANGELOG.md") {
 		if yes, _ := cli.PromptConfirm("Do you want to generate an empty CHANGELOG.md file?"); yes {
-			renderTemplate("CHANGELOG.md", false, changelogTmpl, model)
+			renderTemplateAndReport("CHANGELOG.md", false, changelogTmpl, model)
 		}
 	}
 
@@ -119,12 +97,26 @@ func install(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func renderTemplate(file string, overwrite bool, tmplContent []byte, model map[string]any) {
-	fileExists := cli.FileExists(file)
+func getInstallTemplateModel(global *GlobalModel) map[string]any {
+	return map[string]any{
+		"binary":   global.Project,
+		"project":  global.Project,
+		"language": global.Language.Lower(),
+		"variant":  global.Variant.Lower(),
+	}
+}
 
-	if fileExists && !overwrite {
+func renderTemplateAndReport(file string, overwrite bool, tmplContent []byte, model map[string]any) {
+	wrote := renderTemplate(file, overwrite, tmplContent, model)
+	if wrote == "" {
 		fmt.Printf("Ignoring %q, it already exists\n", file)
-	} else if !fileExists || overwrite {
+	} else {
+		fmt.Printf("Wrote %s\n", wrote)
+	}
+}
+
+func renderTemplate(file string, overwrite bool, tmplContent []byte, model map[string]any) (wrote string) {
+	if !cli.FileExists(file) || overwrite {
 		tmpl, err := template.New(file).Parse(string(tmplContent))
 		cli.NoError(err, "Unable to instantiate template")
 
@@ -137,8 +129,11 @@ func renderTemplate(file string, overwrite bool, tmplContent []byte, model map[s
 		}
 
 		cli.WriteFile(file, buffer.String())
-		fmt.Printf("Wrote %s\n", file)
+
+		return file
 	}
+
+	return ""
 }
 
 type RustInstallModel struct {

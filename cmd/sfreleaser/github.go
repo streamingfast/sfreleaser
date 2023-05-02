@@ -86,7 +86,7 @@ func ensureGitHubReleaseValid(version string) {
 
 	case ghReleaseDraft:
 		fmt.Printf("A draft release for %q already exists at %s\n", version, url)
-		if yes, _ := cli.PromptConfirm("Would you like to delete this draft release?"); yes {
+		if yes, _ := cli.PromptConfirm("Would you like to delete this existing draft release?"); yes {
 			deleteExistingRelease(version)
 			fmt.Println()
 		} else {

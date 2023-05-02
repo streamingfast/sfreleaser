@@ -122,6 +122,9 @@ func release(cmd *cobra.Command, args []string) error {
     	Don't forget to activate link with GitHub by doing 'gh auth login'.
 	`))
 
+	printRustCratesNotPublishedMessage(release.Rust)
+	os.Exit(1)
+
 	if release.Version == "" {
 		release.Version = promptVersion()
 	}
@@ -167,7 +170,17 @@ func release(cmd *cobra.Command, args []string) error {
 
 	envFilePath := "build/.env.release"
 	releaseNotesPath := "build/.release_notes.md"
-	releaseGithub(allowDirty, envFilePath, releaseNotesPath)
+
+	switch global.Language {
+	case LanguageGolang:
+		releaseGolangGitHub(".goreleaser.yaml", allowDirty, envFilePath, releaseNotesPath)
+
+	case LanguageRust:
+		releaseRustGitHub(global, allowDirty, envFilePath, releaseNotesPath)
+
+	default:
+		cli.Quit("unhandled language %q", global.Language)
+	}
 
 	if uploadSpkgPath != "" {
 		fmt.Printf("Uploading Substreams package file %q to release\n", filepath.Base(uploadSpkgPath))
@@ -206,6 +219,10 @@ func release(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 		if yes, _ := cli.PromptConfirm("Publish release right now?"); yes {
 			publishReleaseNow(global, release)
+		} else {
+			if global.Language == LanguageRust && global.Variant == VariantLibrary {
+				printRustCratesNotPublishedMessage(release.Rust)
+			}
 		}
 
 		fmt.Println("Completed")

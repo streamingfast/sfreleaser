@@ -6,7 +6,7 @@ import (
 	"github.com/streamingfast/cli"
 )
 
-func releaseGithub(allowDirty bool, envFilePath string, releaseNotesPath string) {
+func releaseGithub(goreleaseConfigPath string, allowDirty bool, envFilePath string, releaseNotesPath string) {
 	if devSkipGoreleaser {
 		return
 	}
@@ -26,6 +26,7 @@ func releaseGithub(allowDirty bool, envFilePath string, releaseNotesPath string)
 		"goreleaser/goreleaser-cross:" + golangCrossVersion,
 
 		// goreleaser arguments
+		"-f", goreleaseConfigPath,
 		"--timeout=60m",
 		"--rm-dist",
 		"--release-notes=" + releaseNotesPath,
