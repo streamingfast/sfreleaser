@@ -146,10 +146,8 @@ type RustInstallModel struct {
 }
 
 func addRustModel(model map[string]any) map[string]any {
-	findAllRustCrates()
-
 	model["rust"] = &RustInstallModel{
-		Crates: []string{"substreams-macro", "substreams"},
+		Crates: findAllRustCrates(),
 	}
 
 	return model
