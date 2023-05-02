@@ -122,9 +122,6 @@ func release(cmd *cobra.Command, args []string) error {
     	Don't forget to activate link with GitHub by doing 'gh auth login'.
 	`))
 
-	printRustCratesNotPublishedMessage(release.Rust)
-	os.Exit(1)
-
 	if release.Version == "" {
 		release.Version = promptVersion()
 	}
