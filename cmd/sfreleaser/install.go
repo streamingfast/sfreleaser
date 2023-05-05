@@ -99,7 +99,7 @@ func install(cmd *cobra.Command, _ []string) error {
 
 func getInstallTemplateModel(global *GlobalModel) map[string]any {
 	return map[string]any{
-		"binary":   global.Project,
+		"binary":   global.Binary,
 		"project":  global.Project,
 		"language": global.Language.Lower(),
 		"variant":  global.Variant.Lower(),

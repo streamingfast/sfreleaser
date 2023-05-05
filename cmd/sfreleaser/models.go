@@ -12,6 +12,7 @@ import (
 
 type GlobalModel struct {
 	Project  string
+	Binary   string
 	Language Language
 	Variant  Variant
 	Root     string
@@ -30,6 +31,7 @@ func (g *GlobalModel) MarshalLogObject(encoder zapcore.ObjectEncoder) error {
 func mustGetGlobal(cmd *cobra.Command) *GlobalModel {
 	global := &GlobalModel{
 		Project:  sflags.MustGetString(cmd, "project"),
+		Binary:   sflags.MustGetString(cmd, "binary"),
 		Language: mustGetLanguage(cmd),
 		Variant:  mustGetVariant(cmd),
 		Root:     sflags.MustGetString(cmd, "root"),
@@ -42,6 +44,10 @@ func mustGetGlobal(cmd *cobra.Command) *GlobalModel {
 
 	if global.Project == "" {
 		global.Project = filepath.Base(global.WorkingDirectory)
+	}
+
+	if global.Binary == "" {
+		global.Binary = global.Project
 	}
 
 	return global

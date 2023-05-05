@@ -44,6 +44,7 @@ func main() {
 			variable GITHUB_TOKEN.
 		`),
 		PersistentFlags(func(flags *pflag.FlagSet) {
+			flags.StringP("binary", "b", "", "The binary name of the project, defaults to <project> if empty (Golang compiles 'cmd/<binary>')")
 			flags.StringP("language", "l", "", "The language this release is for")
 			flags.StringP("variant", "v", "", "Defines the variant of the project")
 			flags.StringP("project", "p", "", "Override default computed project name which is directory of root/working directory folder")
