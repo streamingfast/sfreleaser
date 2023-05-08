@@ -6,12 +6,11 @@ import (
 	"github.com/streamingfast/cli"
 )
 
-func releaseGithub(goreleaseConfigPath string, allowDirty bool, envFilePath string, releaseNotesPath string) {
+func releaseGithub(model *GitHubReleaseModel) {
 	if devSkipGoreleaser {
 		return
 	}
 
-	golangCrossVersion := "v1.20.2"
 	arguments := []string{
 		"docker",
 
@@ -19,20 +18,20 @@ func releaseGithub(goreleaseConfigPath string, allowDirty bool, envFilePath stri
 		"run",
 		"--rm",
 		"-e CGO_ENABLED=1",
-		"--env-file", envFilePath,
+		"--env-file", model.EnvFilePath,
 		"-v /var/run/docker.sock:/var/run/docker.sock",
 		"-v", cli.WorkingDirectory() + ":/go/src/work",
 		"-w /go/src/work",
-		"goreleaser/goreleaser-cross:" + golangCrossVersion,
+		model.GoreleaserImageID,
 
 		// goreleaser arguments
-		"-f", goreleaseConfigPath,
+		"-f", model.GoreleaseConfigPath,
 		"--timeout=60m",
 		"--rm-dist",
-		"--release-notes=" + releaseNotesPath,
+		"--release-notes=" + model.ReleaseNotesPath,
 	}
 
-	if allowDirty {
+	if model.AllowDirty {
 		arguments = append(arguments, "--skip-validate")
 	}
 

@@ -95,3 +95,11 @@ type RustReleaseModel struct {
 	CargoPublishArgs []string
 	Crates           []string
 }
+
+type GitHubReleaseModel struct {
+	AllowDirty          bool
+	EnvFilePath         string
+	GoreleaseConfigPath string
+	GoreleaserImageID   string
+	ReleaseNotesPath    string
+}

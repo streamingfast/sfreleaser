@@ -55,6 +55,7 @@ var ReleaseCmd = Command(release,
 		flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps")
 		flags.String("upload-substreams-spkg", "", "If provided, add this Substreams package file to the release, if manifest is a 'substreams.yaml' file, the package is first built")
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
+		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.20.3", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
 
 		// Rust Flags
 		flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish' when publishing, the tool might provide some default on its own, Bash rules are used to split the arguments from the string")
@@ -93,6 +94,7 @@ func release(cmd *cobra.Command, args []string) error {
 	}
 
 	allowDirty := sflags.MustGetBool(cmd, "allow-dirty")
+	goreleaserDockerImage := sflags.MustGetString(cmd, "goreleaser-docker-image")
 	publishNow := sflags.MustGetBool(cmd, "publish-now")
 	preBuildHooks := sflags.MustGetStringArray(cmd, "pre-build-hooks")
 	uploadSubstreamsSPKG := sflags.MustGetString(cmd, "upload-substreams-spkg")
@@ -102,6 +104,7 @@ func release(cmd *cobra.Command, args []string) error {
 	zlog.Debug("starting 'sfreleaser release'",
 		zap.Inline(global),
 		zap.Bool("allow_dirty", allowDirty),
+		zap.String("goreleaser_docker_image", goreleaserDockerImage),
 		zap.Bool("publish_now", publishNow),
 		zap.Strings("pre_build_hooks", preBuildHooks),
 		zap.String("upload_substreams_spkg", uploadSubstreamsSPKG),
@@ -165,15 +168,20 @@ func release(cmd *cobra.Command, args []string) error {
 		runSilent("git tag -d", version)
 	})
 
-	envFilePath := "build/.env.release"
-	releaseNotesPath := "build/.release_notes.md"
+	gitHubRelease := &GitHubReleaseModel{
+		AllowDirty:          allowDirty,
+		EnvFilePath:         "build/.env.release",
+		GoreleaseConfigPath: ".goreleaser.yaml",
+		GoreleaserImageID:   goreleaserDockerImage,
+		ReleaseNotesPath:    "build/.release_notes.md",
+	}
 
 	switch global.Language {
 	case LanguageGolang:
-		releaseGolangGitHub(".goreleaser.yaml", allowDirty, envFilePath, releaseNotesPath)
+		releaseGolangGitHub(gitHubRelease)
 
 	case LanguageRust:
-		releaseRustGitHub(global, allowDirty, envFilePath, releaseNotesPath)
+		releaseRustGitHub(global, gitHubRelease)
 
 	default:
 		cli.Quit("unhandled language %q", global.Language)
