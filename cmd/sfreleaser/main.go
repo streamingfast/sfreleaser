@@ -67,3 +67,18 @@ func verifyCommand(command string, onErrorText string) {
 		cli.Exit(1)
 	}
 }
+
+func verifyCommandRunSuccesfully(command string, onErrorText string) {
+	verifyCommand("docker", onErrorText)
+
+	output, _, err := maybeResultOf(command)
+	if err != nil {
+		zlog.Debug("command check failed", zap.String("command", command), zap.String("output", output))
+
+		fmt.Printf("Command %q did not execute succesfully, error with %q\n", command, err.Error())
+		fmt.Println()
+		fmt.Println(onErrorText)
+
+		cli.Exit(1)
+	}
+}

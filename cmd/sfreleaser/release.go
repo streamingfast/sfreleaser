@@ -115,15 +115,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 	cli.NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
 
-	verifyCommand("gh", cli.Dedent(`
-    	The GitHub CLI utility (https://cli.github.com/) is required to obtain
-    	information about the current draft release.
-
-    	Install via brew with 'brew install gh' or refer https://github.com/cli/cli#installation
-    	otherwise.
-
-    	Don't forget to activate link with GitHub by doing 'gh auth login'.
-	`))
+	verifyTools()
 
 	if release.Version == "" {
 		release.Version = promptVersion()
@@ -273,4 +265,34 @@ func prepareSubstreamsSpkg(spkgPath string, global *GlobalModel, release *Releas
 	}
 
 	return spkgPath
+}
+
+func verifyTools() {
+	verifyCommand("docker", cli.Dedent(`
+		The 'docker' utility (https://docs.docker.com/get-docker/) is perform the
+		release.
+
+		Install it via https://docs.docker.com/get-docker/. Ensure you have it enough
+		resources allocated to it. You should use the fastest available options for your
+		system. You should also allocate minimally 4 CPU and 8GiB of RAM.
+	`))
+
+	verifyCommandRunSuccesfully("docker info", cli.Dedent(`
+		Ensure that your Docker Engine is currently running, it seems it's not running
+		right now because the command 'docker info' failed.
+
+		Try running the command 'docker info' locally to see the output. Ensure that it
+		execute successuflly and exits with a 0 exit code (run 'echo $?' right after
+		execution of the 'docker info' command to get its exit code).
+	`))
+
+	verifyCommand("gh", cli.Dedent(`
+		The GitHub CLI utility (https://cli.github.com/) is required to obtain
+		information about the current draft release.
+
+		Install via brew with 'brew install gh' or refer https://github.com/cli/cli#installation
+		otherwise.
+
+		Don't forget to activate link with GitHub by doing 'gh auth login'.
+	`))
 }

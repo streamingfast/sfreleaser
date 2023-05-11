@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.1
+
+* Added checks that `docker` CLI exists and also that `docker info` works properly.
+
 ## v0.4.0
 
 * Added full `CGO` support when building Go application/library, `.goreleaser.yaml` file now has `C_INCLUDE_PATH` and `LIBRARY_PATH` sets correctly so it's possible to build Go that depends on C libraries.
