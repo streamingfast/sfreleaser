@@ -4,8 +4,9 @@
 
 This is a tool we use internally at StreamingFast to automate release process in a standardize way. The tool can support different language and variant. Currently supported project types:
 
-- Language: Golang, Variant: Application
-- Language: Golang, Variant: Library
+- Language: `Golang`, Variant: `Application`
+- Language: `Golang`, Variant: `Library`
+- Language: `Rust`, Variant: `Library`
 
 The `sfreleaser` usually simply wraps instructions for other tools, mainly:
 
