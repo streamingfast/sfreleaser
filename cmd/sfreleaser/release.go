@@ -76,7 +76,7 @@ var ReleaseCmd = Command(release,
 		}()
 
 		if err := release(cmd, args); err != nil {
-			// Let the normal flow happen, we trap error and exit properly
+			// Return error normally, will hit OnCommandError right after
 			return err
 		}
 
@@ -85,8 +85,14 @@ var ReleaseCmd = Command(release,
 		return nil
 	}),
 	OnCommandError(func(err error) {
+		fmt.Println("The release failed with the following error:")
 		fmt.Println()
-		fmt.Println("Error:", err.Error())
+		fmt.Println(err.Error())
+		fmt.Println()
+
+		fmt.Println("If the error is not super clear, you can use 'sfreleaser doctor' which")
+		fmt.Println("list common errors and how to fix them.")
+
 		cli.Exit(1)
 	}),
 )
@@ -205,8 +211,8 @@ func release(cmd *cobra.Command, args []string) error {
 
 			  gh release edit %s --draft=false
 
-			If something is wrong, you can delete the release from GitHub
-			and try again by doing 'gh release delete %s'.
+			If something is wrong, you can delete the release from GitHub and try again by
+			doing 'gh release delete %s'.
 		`, releaseURL, version, version))
 
 		fmt.Println()
