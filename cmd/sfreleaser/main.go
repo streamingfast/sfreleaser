@@ -28,6 +28,7 @@ func main() {
 		ConfigureReleaserConfigFile(),
 		ConfigureVersion(version),
 
+		DoctorCmd,
 		ReleaseCmd,
 		InstallCmd,
 
