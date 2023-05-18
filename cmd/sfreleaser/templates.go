@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	_ "embed"
-	"fmt"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -45,7 +44,6 @@ func renderGoreleaserFile(global *GlobalModel, release *ReleaseModel, github *Gi
 		goreleaserTemplate = goreleaserLibTmpl
 	}
 
-	fmt.Println("Release model disabled", release.Brew.Disabled)
 	renderTemplate(github.GoreleaseConfigPath, true, goreleaserTemplate, getReleaseTemplateModel(global, release))
 }
 
