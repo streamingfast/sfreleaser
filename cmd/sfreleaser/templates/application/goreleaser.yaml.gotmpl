@@ -106,7 +106,7 @@ brews:
     - {{ .global.Project }}
     tap:
       owner: {{ .global.Owner }}
-      name: homebrew-tap
+      name: {{ .release.Brew.TapRepo }}
     commit_author:
       name: goreleaser
     homepage: "https://github.com/{{ .global.Owner }}/{{ .global.Project }}"

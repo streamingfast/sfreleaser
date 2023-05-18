@@ -100,6 +100,7 @@ type ReleaseModel struct {
 func (m *ReleaseModel) populate(cmd *cobra.Command, language Language) {
 	m.Brew = &BrewReleaseModel{
 		Disabled: sflags.MustGetBool(cmd, "brew-disabled"),
+		TapRepo:  sflags.MustGetString(cmd, "brew-tap-repo"),
 	}
 
 	switch language {
@@ -132,4 +133,5 @@ type GitHubReleaseModel struct {
 
 type BrewReleaseModel struct {
 	Disabled bool
+	TapRepo  string
 }

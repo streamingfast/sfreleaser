@@ -60,6 +60,7 @@ var ReleaseCmd = Command(release,
 
 		// Brew Flags
 		flags.Bool("brew-disabled", false, "[Brew only] Disable Brew tap release completely, only applies for 'Golang'/'Application' types")
+		flags.String("brew-tap-repo", "homebrew-tap", "[Brew only] The GitHub project name of the tap, the repo owner is defined by 'owner' config value")
 
 		// Rust Flags
 		flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish' when publishing, the tool might provide some default on its own, Bash rules are used to split the arguments from the string")
