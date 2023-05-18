@@ -11,20 +11,24 @@ import (
 )
 
 type GlobalModel struct {
-	Project  string
-	Binary   string
-	Language Language
-	Variant  Variant
-	Root     string
+	Project    string
+	Binary     string
+	Language   Language
+	Variant    Variant
+	Root       string
+	ConfigRoot string
 
 	WorkingDirectory string
 }
 
 func (g *GlobalModel) MarshalLogObject(encoder zapcore.ObjectEncoder) error {
 	encoder.AddString("project", g.Project)
+	encoder.AddString("binary", g.Binary)
 	encoder.AddString("language", g.Language.String())
 	encoder.AddString("variant", g.Variant.String())
+	encoder.AddString("config_root", g.ConfigRoot)
 	encoder.AddString("working_directory", g.WorkingDirectory)
+
 	return nil
 }
 
@@ -50,7 +54,17 @@ func mustGetGlobal(cmd *cobra.Command) *GlobalModel {
 		global.Binary = global.Project
 	}
 
+	global.ConfigRoot = findSfreleaserDir(global.WorkingDirectory)
+
 	return global
+}
+
+func (g *GlobalModel) ResolveFile(in string) string {
+	if filepath.IsAbs(in) {
+		return in
+	}
+
+	return filepath.Join(g.ConfigRoot, in)
 }
 
 func (g *GlobalModel) ensureValidForRelease() {

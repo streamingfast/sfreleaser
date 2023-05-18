@@ -52,6 +52,7 @@ var ReleaseCmd = Command(release,
 	`),
 	Flags(func(flags *pflag.FlagSet) {
 		flags.Bool("allow-dirty", false, "Perform release step even if Git is not clean, tries to configured used tool(s) to also allow dirty Git state")
+		flags.String("changelog-path", "CHANGELOG.md", "Path where to find the changelog file used to extract the release notes")
 		flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps")
 		flags.String("upload-substreams-spkg", "", "If provided, add this Substreams package file to the release, if manifest is a 'substreams.yaml' file, the package is first built")
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
@@ -94,6 +95,7 @@ func release(cmd *cobra.Command, args []string) error {
 	}
 
 	allowDirty := sflags.MustGetBool(cmd, "allow-dirty")
+	changelogPath := global.ResolveFile(sflags.MustGetString(cmd, "changelog-path"))
 	goreleaserDockerImage := sflags.MustGetString(cmd, "goreleaser-docker-image")
 	publishNow := sflags.MustGetBool(cmd, "publish-now")
 	preBuildHooks := sflags.MustGetStringArray(cmd, "pre-build-hooks")
@@ -104,6 +106,7 @@ func release(cmd *cobra.Command, args []string) error {
 	zlog.Debug("starting 'sfreleaser release'",
 		zap.Inline(global),
 		zap.Bool("allow_dirty", allowDirty),
+		zap.String("changelog_path", changelogPath),
 		zap.String("goreleaser_docker_image", goreleaserDockerImage),
 		zap.Bool("publish_now", publishNow),
 		zap.Strings("pre_build_hooks", preBuildHooks),
@@ -135,7 +138,7 @@ func release(cmd *cobra.Command, args []string) error {
 	cli.NoError(os.MkdirAll("build", os.ModePerm), "Unable to create build directory")
 
 	configureGitHubTokenEnvFile("build/.env.release")
-	cli.WriteFile("build/.release_notes.md", readReleaseNotes())
+	cli.WriteFile("build/.release_notes.md", readReleaseNotes(changelogPath))
 
 	// By doing this after creating the build directory and release notes, we ensure
 	// that those are ignored, the user will need to ignore them to process (or --allow-dirty).

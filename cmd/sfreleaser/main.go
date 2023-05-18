@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/spf13/pflag"
 	"github.com/streamingfast/cli"
@@ -81,5 +82,22 @@ func verifyCommandRunSuccesfully(command string, onErrorText string) {
 		fmt.Println(onErrorText)
 
 		cli.Exit(1)
+	}
+}
+
+func findSfreleaserDir(workingDirectory string) string {
+	current := workingDirectory
+	volumeName := filepath.VolumeName(current)
+
+	for {
+		if current == volumeName {
+			return ""
+		}
+
+		if _, err := os.Stat(filepath.Join(current, ".sfreleaser")); err == nil {
+			return current
+		}
+
+		current = filepath.Dir(current)
 	}
 }

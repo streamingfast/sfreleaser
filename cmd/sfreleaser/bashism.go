@@ -80,12 +80,11 @@ func (i *commandInfo) String() string {
 	return strings.Join(append(append(i.env, i.command), i.args...), " ")
 }
 
-func run(inputs ...string) (output string, err error) {
-	var info *commandInfo
-	output, info, err = maybeRun(inputs...)
+func run(inputs ...string) (output string) {
+	output, info, err := maybeRun(inputs...)
 	cli.NoError(err, "Command %q failed", info)
 
-	return output, nil
+	return output
 }
 
 // runSilent is like [run] but do not print the command output but do print

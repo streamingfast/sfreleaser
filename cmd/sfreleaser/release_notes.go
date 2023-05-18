@@ -12,8 +12,7 @@ import (
 
 var headerRegex = regexp.MustCompile(`^##([^#])`)
 
-func readReleaseNotes() string {
-	changelogFile := "./CHANGELOG.md"
+func readReleaseNotes(changelogFile string) string {
 	if !cli.FileExists(changelogFile) {
 		return ""
 	}

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.2
+
+* Added support for resolving files relative to `.sfreleaser` location.
+
+* Added support for specifying a non-default changelog file.
+
 ## v0.4.1
 
 * Added checks that `docker` CLI exists and also that `docker info` works properly.
