@@ -1,9 +1,13 @@
-project_name: {{ .project }}
+project_name: {{ .global.Project }}
 
 release:
   draft: true
+  replace_existing_draft: true
   name_template: '{{`{{.Tag}}`}}'
   target_commitish: '{{`{{ .Commit }}`}}'
+  github:
+    owner: {{ .global.Owner }}
+    name: {{ .global.Project }}
 
 builds:
 - skip: true

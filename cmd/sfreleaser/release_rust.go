@@ -2,28 +2,10 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/streamingfast/cli"
 )
-
-func releaseRustGitHub(global *GlobalModel, gitHubRelease *GitHubReleaseModel) {
-	buildDirectory := "build"
-	gitHubRelease.GoreleaseConfigPath = filepath.Join(buildDirectory, "goreleaser.yaml")
-
-	cli.NoError(os.MkdirAll(buildDirectory, os.ModePerm), `Unable to create %q directory`, buildDirectory)
-
-	goreleaserTemplate := goreleaserAppTmpl
-	if global.Variant == VariantLibrary {
-		goreleaserTemplate = goreleaserLibTmpl
-	}
-
-	renderTemplate(gitHubRelease.GoreleaseConfigPath, true, goreleaserTemplate, getInstallTemplateModel(global))
-
-	releaseGithub(gitHubRelease)
-}
 
 func printRustCratesNotPublishedMessage(rust *RustReleaseModel) {
 	cli.Ensure(rust != nil, "Rust model should have been populated by now but it's currently nil")

@@ -1,6 +1,6 @@
 global:
-  language: {{ .language }}
-  variant: {{ .variant }}
+  language: {{ .global.Language | lower }}
+  variant: {{ .global.Variant | lower }}
 {{- if .rust.Crates }}
 release:
   # This is the list of Rust crates that are going to be 'cargo publish'.

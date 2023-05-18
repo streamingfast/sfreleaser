@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bytes"
-	_ "embed"
 	"fmt"
 	"os"
-	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/spf13/cobra"
@@ -15,21 +13,6 @@ import (
 	"github.com/streamingfast/cli/sflags"
 	"go.uber.org/zap"
 )
-
-//go:embed templates/application/goreleaser.yaml.gotmpl
-var goreleaserAppTmpl []byte
-
-//go:embed templates/library/goreleaser.yaml.gotmpl
-var goreleaserLibTmpl []byte
-
-//go:embed templates/CHANGELOG.md.gotmpl
-var changelogTmpl []byte
-
-//go:embed templates/sfreleaser-golang.yaml.gotmpl
-var sfreleaserGolangYamlTmpl []byte
-
-//go:embed templates/sfreleaser-rust.yaml.gotmpl
-var sfreleaserRustYamlTmpl []byte
 
 var InstallCmd = Command(install,
 	"install",
@@ -64,13 +47,6 @@ func install(cmd *cobra.Command, _ []string) error {
 
 	model := getInstallTemplateModel(global)
 
-	goreleaserTemplate := goreleaserAppTmpl
-	if global.Variant == VariantLibrary {
-		goreleaserTemplate = goreleaserLibTmpl
-	}
-
-	renderTemplateAndReport(".goreleaser.yaml", overwrite, goreleaserTemplate, model)
-
 	var sfreleaserYamlTmpl []byte
 	switch global.Language {
 	case LanguageGolang:
@@ -84,11 +60,11 @@ func install(cmd *cobra.Command, _ []string) error {
 		cli.Quit("unhandled language %q", global.Language)
 	}
 
-	renderTemplateAndReport(".sfreleaser", overwrite, sfreleaserYamlTmpl, model)
+	renderInstallTemplate(".sfreleaser", overwrite, sfreleaserYamlTmpl, model)
 
 	if !cli.FileExists("CHANGELOG.md") {
 		if yes, _ := cli.PromptConfirm("Do you want to generate an empty CHANGELOG.md file?"); yes {
-			renderTemplateAndReport("CHANGELOG.md", false, changelogTmpl, model)
+			renderInstallTemplate("CHANGELOG.md", false, changelogTmpl, model)
 		}
 	}
 
@@ -97,43 +73,13 @@ func install(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func getInstallTemplateModel(global *GlobalModel) map[string]any {
-	return map[string]any{
-		"binary":   global.Binary,
-		"project":  global.Project,
-		"language": global.Language.Lower(),
-		"variant":  global.Variant.Lower(),
-	}
-}
-
-func renderTemplateAndReport(file string, overwrite bool, tmplContent []byte, model map[string]any) {
+func renderInstallTemplate(file string, overwrite bool, tmplContent []byte, model map[string]any) {
 	wrote := renderTemplate(file, overwrite, tmplContent, model)
 	if wrote == "" {
 		fmt.Printf("Ignoring %q, it already exists\n", file)
 	} else {
 		fmt.Printf("Wrote %s\n", wrote)
 	}
-}
-
-func renderTemplate(file string, overwrite bool, tmplContent []byte, model map[string]any) (wrote string) {
-	if !cli.FileExists(file) || overwrite {
-		tmpl, err := template.New(file).Parse(string(tmplContent))
-		cli.NoError(err, "Unable to instantiate template")
-
-		buffer := bytes.NewBuffer(nil)
-		tmpl.Execute(buffer, model)
-
-		directory := filepath.Dir(file)
-		if !cli.DirectoryExists(directory) {
-			cli.NoError(os.MkdirAll(directory, os.ModePerm), "Making directories for template file %q", file)
-		}
-
-		cli.WriteFile(file, buffer.String())
-
-		return file
-	}
-
-	return ""
 }
 
 type RustInstallModel struct {
@@ -146,4 +92,24 @@ func addRustModel(model map[string]any) map[string]any {
 	}
 
 	return model
+}
+
+var templateFuncs = template.FuncMap{
+	"lower": transformStringFunc(strings.ToLower),
+	"upper": transformStringFunc(strings.ToUpper),
+}
+
+func transformStringFunc(transformer func(in string) string) func(in any) string {
+	return func(in any) string {
+		switch v := in.(type) {
+		case string:
+			return transformer(v)
+
+		case fmt.Stringer:
+			return transformer(v.String())
+
+		default:
+			return transformer(fmt.Sprintf("%s", v))
+		}
+	}
 }

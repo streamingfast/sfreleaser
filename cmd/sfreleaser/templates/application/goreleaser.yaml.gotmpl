@@ -3,8 +3,8 @@ env_files:
 
 builds:
   - id: darwin-amd64
-    main: ./cmd/{{ .binary }}
-    binary: {{ .binary }}
+    main: ./cmd/{{ .global.Binary }}
+    binary: {{ .global.Binary }}
     goos:
       - darwin
     goarch:
@@ -22,8 +22,8 @@ builds:
       - -s -w -X main.version={{`{{.Version}}`}}
 
   - id: darwin-arm64
-    main: ./cmd/{{ .binary }}
-    binary: {{ .binary }}
+    main: ./cmd/{{ .global.Binary }}
+    binary: {{ .global.Binary }}
     goos:
       - darwin
     goarch:
@@ -41,8 +41,8 @@ builds:
       - -s -w -X main.version={{`{{.Version}}`}}
 
   - id: linux-amd64
-    main: ./cmd/{{ .binary }}
-    binary: {{ .binary }}
+    main: ./cmd/{{ .global.Binary }}
+    binary: {{ .global.Binary }}
     goos:
       - linux
     goarch:
@@ -60,7 +60,7 @@ builds:
       - -s -w -X main.version={{`{{.Version}}`}}
 
 archives:
-  - id: {{ .project }}
+  - id: {{ .global.Project }}
     builds:
       - darwin-amd64
       - darwin-arm64
@@ -92,19 +92,23 @@ changelog:
 
 release:
   draft: true
+  replace_existing_draft: true
   name_template: '{{`{{ .Tag }}`}}'
   target_commitish: '{{`{{ .Commit }}`}}'
+  github:
+    owner: {{ .global.Owner }}
+    name: {{ .global.Project }}
 
+{{- if not .release.Brew.Disabled }}
 brews:
-  - name: {{ .project }}
+  - name: {{ .global.Project }}
     ids:
-    - {{ .project }}
+    - {{ .global.Project }}
     tap:
-      owner: streamingfast
+      owner: {{ .global.Owner }}
       name: homebrew-tap
     commit_author:
-      name: goreleaserbot
-      email: goreleaser@streamingfast.io
-    homepage: "https://github.com/streamingfast/{{ .project }}"
-    description: "StreamingFast CLI for '{{ .project }}'"
-    license: "Apache-2.0"
+      name: goreleaser
+    homepage: "https://github.com/{{ .global.Owner }}/{{ .global.Project }}"
+    license: {{ .global.License }}
+{{- end }}

@@ -11,9 +11,11 @@ import (
 )
 
 type GlobalModel struct {
+	Owner      string
 	Project    string
 	Binary     string
 	Language   Language
+	License    string
 	Variant    Variant
 	Root       string
 	ConfigRoot string
@@ -22,9 +24,11 @@ type GlobalModel struct {
 }
 
 func (g *GlobalModel) MarshalLogObject(encoder zapcore.ObjectEncoder) error {
+	encoder.AddString("owner", g.Owner)
 	encoder.AddString("project", g.Project)
 	encoder.AddString("binary", g.Binary)
 	encoder.AddString("language", g.Language.String())
+	encoder.AddString("license", g.License)
 	encoder.AddString("variant", g.Variant.String())
 	encoder.AddString("config_root", g.ConfigRoot)
 	encoder.AddString("working_directory", g.WorkingDirectory)
@@ -34,9 +38,11 @@ func (g *GlobalModel) MarshalLogObject(encoder zapcore.ObjectEncoder) error {
 
 func mustGetGlobal(cmd *cobra.Command) *GlobalModel {
 	global := &GlobalModel{
+		Owner:    sflags.MustGetString(cmd, "owner"),
 		Project:  sflags.MustGetString(cmd, "project"),
 		Binary:   sflags.MustGetString(cmd, "binary"),
 		Language: mustGetLanguage(cmd),
+		License:  sflags.MustGetString(cmd, "license"),
 		Variant:  mustGetVariant(cmd),
 		Root:     sflags.MustGetString(cmd, "root"),
 	}
@@ -85,11 +91,17 @@ func (g *GlobalModel) ensureValidForRelease() {
 type ReleaseModel struct {
 	Version string
 
+	Brew *BrewReleaseModel
+
 	// Rust is populated only if config if of type Rust
 	Rust *RustReleaseModel
 }
 
-func (m *ReleaseModel) populateLanguageSpecificModel(cmd *cobra.Command, language Language) {
+func (m *ReleaseModel) populate(cmd *cobra.Command, language Language) {
+	m.Brew = &BrewReleaseModel{
+		Disabled: sflags.MustGetBool(cmd, "brew-disabled"),
+	}
+
 	switch language {
 	case LanguageGolang:
 		// Nothing
@@ -116,4 +128,8 @@ type GitHubReleaseModel struct {
 	GoreleaseConfigPath string
 	GoreleaserImageID   string
 	ReleaseNotesPath    string
+}
+
+type BrewReleaseModel struct {
+	Disabled bool
 }

@@ -46,8 +46,10 @@ func main() {
 			variable GITHUB_TOKEN.
 		`),
 		PersistentFlags(func(flags *pflag.FlagSet) {
+			flags.StringP("owner", "o", "streamingfast", "The owner/organization owning the project, used to compute the GitHub repository name")
 			flags.StringP("binary", "b", "", "The binary name of the project, defaults to <project> if empty (Golang compiles 'cmd/<binary>')")
 			flags.StringP("language", "l", "", "The language this release is for")
+			flags.String("license", "Apache-2.0", "The license used for the project")
 			flags.StringP("variant", "v", "", "Defines the variant of the project")
 			flags.StringP("project", "p", "", "Override default computed project name which is directory of root/working directory folder")
 			flags.String("root", "", "If defined, change the working directory of the process before proceeding with the release")
@@ -86,11 +88,12 @@ func verifyCommandRunSuccesfully(command string, onErrorText string) {
 }
 
 func findSfreleaserDir(workingDirectory string) string {
+	zlog.Debug("trying to find .sfreleaser directory", zap.String("working_directory", workingDirectory))
 	current := workingDirectory
 	volumeName := filepath.VolumeName(current)
 
 	for {
-		if current == volumeName {
+		if current == volumeName || current == "/" {
 			return ""
 		}
 

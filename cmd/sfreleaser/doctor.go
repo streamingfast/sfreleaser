@@ -32,7 +32,9 @@ func doctor(cmd *cobra.Command, _ []string) error {
 		fmt.Println(cli.Dedent(`
 			Here a list of known issues and possible solutions:
 
-			## Failed to upload artifact ... https://uploads.github.com/repos/<org>/<repo>/releases/<resource>: 307 Moved Permanently
+			##
+			### Failed to upload artifact <...> https://uploads.github.com/repos/<org>/<repo>/releases/<resource>: 307 Moved Permanently
+			##
 
 			This happens usually happens when Git 'origin' remote is misaligned with GitHub. A to
 			notice if it's the case is looking at the <org>/<repo> value in the url, it usually

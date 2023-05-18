@@ -58,6 +58,9 @@ var ReleaseCmd = Command(release,
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
 		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.20.3", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
 
+		// Brew Flags
+		flags.Bool("brew-disabled", false, "[Brew only] Disable Brew tap release completely, only applies for 'Golang'/'Application' types")
+
 		// Rust Flags
 		flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish' when publishing, the tool might provide some default on its own, Bash rules are used to split the arguments from the string")
 		flags.StringArray("rust-crates", nil, "[Rust only] The list of crates we should publish, the project is expected to be a workspace if this is used")
@@ -101,7 +104,7 @@ func release(cmd *cobra.Command, args []string) error {
 	preBuildHooks := sflags.MustGetStringArray(cmd, "pre-build-hooks")
 	uploadSubstreamsSPKG := sflags.MustGetString(cmd, "upload-substreams-spkg")
 
-	release.populateLanguageSpecificModel(cmd, global.Language)
+	release.populate(cmd, global.Language)
 
 	zlog.Debug("starting 'sfreleaser release'",
 		zap.Inline(global),
@@ -135,10 +138,13 @@ func release(cmd *cobra.Command, args []string) error {
 
 	ensureGitSync()
 
-	cli.NoError(os.MkdirAll("build", os.ModePerm), "Unable to create build directory")
+	buildDirectory := "build"
+	envFilePath := filepath.Join(buildDirectory, ".env.release")
+	releaseNotesPath := filepath.Join(buildDirectory, ".release_notes.md")
 
-	configureGitHubTokenEnvFile("build/.env.release")
-	cli.WriteFile("build/.release_notes.md", readReleaseNotes(changelogPath))
+	cli.NoError(os.MkdirAll(buildDirectory, os.ModePerm), "Unable to create build directory")
+	configureGitHubTokenEnvFile(envFilePath)
+	cli.WriteFile(releaseNotesPath, readReleaseNotes(changelogPath))
 
 	// By doing this after creating the build directory and release notes, we ensure
 	// that those are ignored, the user will need to ignore them to process (or --allow-dirty).
@@ -165,22 +171,13 @@ func release(cmd *cobra.Command, args []string) error {
 
 	gitHubRelease := &GitHubReleaseModel{
 		AllowDirty:          allowDirty,
-		EnvFilePath:         "build/.env.release",
-		GoreleaseConfigPath: ".goreleaser.yaml",
+		EnvFilePath:         envFilePath,
+		GoreleaseConfigPath: filepath.Join(buildDirectory, "goreleaser.yaml"),
 		GoreleaserImageID:   goreleaserDockerImage,
-		ReleaseNotesPath:    "build/.release_notes.md",
+		ReleaseNotesPath:    releaseNotesPath,
 	}
 
-	switch global.Language {
-	case LanguageGolang:
-		releaseGolangGitHub(gitHubRelease)
-
-	case LanguageRust:
-		releaseRustGitHub(global, gitHubRelease)
-
-	default:
-		cli.Quit("unhandled language %q", global.Language)
-	}
+	releaseGithub(global, release, gitHubRelease)
 
 	if uploadSpkgPath != "" {
 		fmt.Printf("Uploading Substreams package file %q to release\n", filepath.Base(uploadSpkgPath))

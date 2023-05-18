@@ -1,6 +1,6 @@
 global:
-  {{- if .binary }}
-  binary: {{ .binary }}
+  {{- if .global.Binary }}
+  binary: {{ .global.Binary }}
   {{- end }}
-  language: {{ .language }}
-  variant: {{ .variant }}
+  language: {{ .global.Language | lower }}
+  variant: {{ .global.Variant | lower }}
