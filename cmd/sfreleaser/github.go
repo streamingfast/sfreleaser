@@ -21,20 +21,20 @@ var (
 	ghActionTokenRegex          = `v[0-9]\.[0-9a-f]{40}`
 )
 
-var githubTokenRegex = regexp.MustCompile(fmt.Sprintf(`^(%s|%s|%s)$`, ghpPersonalLegacyTokenRegex, ghPersonalTokenRegex, ghActionTokenRegex))
+var githubTokenRegex = regexp.MustCompile(fmt.Sprintf(`^\s*(%s|%s|%s)\s*$`, ghpPersonalLegacyTokenRegex, ghPersonalTokenRegex, ghActionTokenRegex))
 
 func configureGitHubTokenEnvFile(releaseEnvFile string) {
 	zlog.Debug("verifying github token")
 	globalGitHubTokenFile := filepath.Join(cli.UserHomeDirectory(), ".config", "goreleaser", "github_token")
 
 	from := `"<Not Found>"`
-	token := os.Getenv("GITHUB_TOKEN")
+	token := strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))
 
 	if token != "" {
 		from = "environment variable GITHUB_TOKEN"
 	} else if token == "" && cli.FileExists(globalGitHubTokenFile) {
 		from = fmt.Sprintf("global config file %q", globalGitHubTokenFile)
-		token = cli.ReadFile(globalGitHubTokenFile)
+		token = strings.TrimSpace(cli.ReadFile(globalGitHubTokenFile))
 	}
 
 	zlog.Debug("completed scan for GitHub token", zap.Bool("found", token != ""), zap.String("from", globalGitHubTokenFile))

@@ -5,15 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.5.3
+
+### Fixed
+
+* Fixed an issue when the github token has some leading or trailing spaces, like a new line.
+
 ## v0.5.2
+
+### Changed
 
 * Improved `sfreleaser release` to print some troubleshooting idea using `sfreleaser doctor`.
 
 ## v0.5.1
 
+### Added
+
 * Added support for `brew-tap-repo` to set the Brew tap repository where to push the binary (config at `release.brew-tap-repo`).
 
 ## v0.5.0
+
+### Added
 
 * Removed the need to have `.goreleaser.yaml` file in the repository (file is now generated on the fly).
 
