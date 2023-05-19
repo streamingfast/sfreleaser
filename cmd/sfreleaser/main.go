@@ -20,6 +20,10 @@ var (
 	devSkipRustCargoPublish = os.Getenv("SFRELEASER_DEV_SKIP_RUST_CARGO_PUBLISH") == "true"
 )
 
+var (
+	ptyDisabled = os.Getenv("SFRELEASER_DISABLE_PTY") == "true"
+)
+
 func main() {
 	Run(
 		"sfreleaser",

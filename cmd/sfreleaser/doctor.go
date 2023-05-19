@@ -29,20 +29,18 @@ func doctor(cmd *cobra.Command, _ []string) error {
 		Here a list of known issues and possible solutions:
 
 		##
-		### Failed to upload artifact <...> https://uploads.github.com/repos/<org>/<repo>/releases/<resource>: 307 Moved Permanently
+		### Unable to copy command PTY to stdout: read /dev/ptmx: input/output error
 		##
 
-		This happens usually happens when Git 'origin' remote is misaligned with GitHub. A to
-		notice if it's the case is looking at the <org>/<repo> value in the url, it usually
-		not the same as GitHub.
+		If you have some error related to PTY, it's possible we have a problem running the command inside
+		an internal PTY. That is done like this so that executed commands thinks that are in a standard
+		terminal and as such, render colors and other things correctly.
 
-		This happens for example when the reposistory is renamed but you did not
-		update your local remote URL, it's still pointing at the old location. The release tool
-		use your remote's origin to infer the release URL but the tool don't hande redirects
-		correctly.
+		If you have such error, the best course of action is to disable PTY by setting the following
+		environment variable: SFRELEASER_DISABLE_PTY=true.
 
-		To fix this, you need to update your remote URL to point at the new location. You can
-		use the following command to do so: 'git remote set-url origin <new-url>'.
+		Doing so will run the command using a non-PTY terminal, rendering will be different but it
+		everything should work correctly.
 
 		##
 		### homebrew tap formula: failed to publish artifacts: PUT https://api.github.com/repos/<owner>/<tap-repo>/<...>: 404 Not Found
@@ -62,6 +60,22 @@ func doctor(cmd *cobra.Command, _ []string) error {
 
 		    release:
 		        brew-disabled: true
+
+		##
+		### Failed to upload artifact <...> https://uploads.github.com/repos/<org>/<repo>/releases/<resource>: 307 Moved Permanently
+		##
+
+		This happens usually happens when Git 'origin' remote is misaligned with GitHub. A to
+		notice if it's the case is looking at the <org>/<repo> value in the url, it usually
+		not the same as GitHub.
+
+		This happens for example when the reposistory is renamed but you did not
+		update your local remote URL, it's still pointing at the old location. The release tool
+		use your remote's origin to infer the release URL but the tool don't hande redirects
+		correctly.
+
+		To fix this, you need to update your remote URL to point at the new location. You can
+		use the following command to do so: 'git remote set-url origin <new-url>'.
 	`))
 
 	return nil

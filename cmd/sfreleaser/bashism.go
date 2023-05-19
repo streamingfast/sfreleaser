@@ -119,13 +119,6 @@ func internalMaybeRun(inputs []string, silent bool) (output string, info *comman
 	info = newCommandInfo(inputs...)
 	cli.Ensure(info.command != "", "Must have at least command to run")
 
-	zlog.Debug("starting command through PTY", zap.Stringer("cmd", info))
-
-	cmd := info.ToCommand()
-	ptyFile, err := pty.Start(cmd)
-	cli.NoError(err, "Unable to create PTY")
-	defer ptyFile.Close()
-
 	// FIXME: What to do with error where program would like to receive data written to terminal,
 	// for example for input?
 
@@ -136,14 +129,32 @@ func internalMaybeRun(inputs []string, silent bool) (output string, info *comman
 		outputWriter = io.Discard
 	}
 
+	cmd := info.ToCommand()
 	writer := io.MultiWriter(outputWriter, captured)
 
-	go func() {
-		zlog.Debug("starting copy of process pty output to stdout")
-		_, err = io.Copy(writer, ptyFile)
-		cli.NoError(err, "Unable to copy command PTY to stdout")
-		zlog.Debug("completed pty output copier")
-	}()
+	if ptyDisabled {
+		zlog.Debug("starting command", zap.Stringer("cmd", info))
+
+		cmd.Stdout = writer
+		cmd.Stderr = writer
+
+		err := cmd.Start()
+		cli.NoError(err, "Unable to start command")
+
+	} else {
+		zlog.Debug("starting command through PTY", zap.Stringer("cmd", info))
+
+		ptyFile, err := pty.Start(cmd)
+		cli.NoError(err, "Unable to start command through PTY")
+		defer ptyFile.Close()
+
+		go func() {
+			zlog.Debug("starting copy of process pty output to stdout")
+			_, err = io.Copy(writer, ptyFile)
+			cli.NoError(err, "Unable to copy command PTY to stdout")
+			zlog.Debug("completed pty output copier")
+		}()
+	}
 
 	err = cmd.Wait()
 	return captured.String(), info, err
