@@ -102,6 +102,7 @@ func release(cmd *cobra.Command, args []string) error {
 	release := &ReleaseModel{Version: ""}
 	if len(args) > 0 {
 		release.Version = args[0]
+		cli.NoError(validVersion(release.Version), "invalid version")
 	}
 
 	allowDirty := sflags.MustGetBool(cmd, "allow-dirty")
