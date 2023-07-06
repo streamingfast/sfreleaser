@@ -73,6 +73,14 @@ func (g *GlobalModel) ResolveFile(in string) string {
 	return filepath.Join(g.ConfigRoot, in)
 }
 
+func (g *GlobalModel) ensureValidForBuild() {
+	g.ensureValidForRelease()
+
+	if g.Language != LanguageGolang {
+		cli.Quit(`'sfreleaser build' only works for Go projects at the moment, sorry!`)
+	}
+}
+
 func (g *GlobalModel) ensureValidForRelease() {
 	var errors []string
 	if g.Language == LanguageUnset {
@@ -85,6 +93,22 @@ func (g *GlobalModel) ensureValidForRelease() {
 
 	if len(errors) != 0 {
 		cli.Quit(strings.Join(errors, "\n"))
+	}
+}
+
+type BuildModel struct {
+	Version string
+
+	All       bool
+	Platforms []string
+}
+
+func (m *BuildModel) populate(cmd *cobra.Command) {
+	m.All = sflags.MustGetBool(cmd, "all")
+	m.Platforms = sflags.MustGetStringArray(cmd, "platform")
+
+	for i, platform := range m.Platforms {
+		m.Platforms[i] = strings.Replace(strings.ToLower(platform), "/", "-", 1)
 	}
 }
 

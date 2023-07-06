@@ -2,9 +2,36 @@ package main
 
 import (
 	"fmt"
+	"runtime"
+	"strings"
 
 	"github.com/streamingfast/cli"
 )
+
+func buildArtifacts(global *GlobalModel, build *BuildModel, githubRelease *GitHubReleaseModel) {
+	renderGoreleaserFile(global, &ReleaseModel{
+		Version: build.Version,
+		Brew:    &BrewReleaseModel{Disabled: true},
+		Rust:    &RustReleaseModel{},
+	}, githubRelease)
+
+	var goreleaserArguments []string
+	if build.All {
+		// Nothing, default build all
+	} else if len(build.Platforms) > 0 {
+		for _, platform := range build.Platforms {
+			goreleaserArguments = append(goreleaserArguments, "--id", platform)
+		}
+	} else {
+		goreleaserArguments = []string{"--id", runtime.GOOS + "-" + runtime.GOARCH}
+	}
+
+	if build.Version == "" {
+		goreleaserArguments = append(goreleaserArguments, "--snapshot")
+	}
+
+	run(goreleaseDockerCommand(global, githubRelease, "build", nil, goreleaserArguments)...)
+}
 
 func releaseGithub(global *GlobalModel, release *ReleaseModel, githubRelease *GitHubReleaseModel) {
 	if devSkipGoreleaser {
@@ -13,6 +40,13 @@ func releaseGithub(global *GlobalModel, release *ReleaseModel, githubRelease *Gi
 
 	renderGoreleaserFile(global, release, githubRelease)
 
+	fmt.Println()
+	run(goreleaseDockerCommand(global, githubRelease, "release", nil, []string{
+		"--release-notes=" + githubRelease.ReleaseNotesPath,
+	})...)
+}
+
+func goreleaseDockerCommand(global *GlobalModel, githubRelease *GitHubReleaseModel, command string, dockerExtraArguments []string, goReleaserExtraArguments []string) []string {
 	arguments := []string{
 		"docker",
 
@@ -23,19 +57,32 @@ func releaseGithub(global *GlobalModel, release *ReleaseModel, githubRelease *Gi
 		"-v /var/run/docker.sock:/var/run/docker.sock",
 		"-v", cli.WorkingDirectory() + ":/go/src/work",
 		"-w /go/src/work",
+	}
+
+	if global.Language == LanguageGolang {
+		if output, _, err := maybeResultOf("go env GOCACHE"); err == nil && output != "" {
+			arguments = append(arguments, "-e GOCACHE=/go/cache")
+			arguments = append(arguments, "-v", strings.TrimSpace(output)+":/go/cache")
+		}
+	}
+
+	arguments = append(arguments, dockerExtraArguments...)
+
+	arguments = append(arguments, []string{
 		githubRelease.GoreleaserImageID,
 
 		// goreleaser arguments
+		command,
 		"-f", githubRelease.GoreleaseConfigPath,
 		"--timeout=60m",
-		"--rm-dist",
-		"--release-notes=" + githubRelease.ReleaseNotesPath,
-	}
+		"--clean",
+	}...)
 
 	if githubRelease.AllowDirty {
 		arguments = append(arguments, "--skip-validate")
 	}
 
-	fmt.Println()
-	run(arguments...)
+	arguments = append(arguments, goReleaserExtraArguments...)
+
+	return arguments
 }

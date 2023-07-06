@@ -6,11 +6,12 @@ require (
 	github.com/bobg/go-generics/v2 v2.1.1
 	github.com/creack/pty v1.1.18
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+	github.com/pelletier/go-toml/v2 v2.0.7
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
-	github.com/streamingfast/cli v0.0.4-0.20230420210357-3bebdb9f2fbf
-	github.com/streamingfast/logging v0.0.0-20221209193439-bff11742bf4c
+	github.com/streamingfast/cli v0.0.4-0.20230706210218-7a995ae25bab
+	github.com/streamingfast/logging v0.0.0-20230608130331-f22c91403091
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.21.0
 )
@@ -32,8 +33,6 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/pelletier/go-toml v1.9.5 // indirect
-	github.com/pelletier/go-toml/v2 v2.0.7 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect

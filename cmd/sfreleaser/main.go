@@ -34,6 +34,7 @@ func main() {
 		ConfigureVersion(version),
 
 		DoctorCmd,
+		BuildCmd,
 		ReleaseCmd,
 		InstallCmd,
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/bobg/go-generics/v2/slices"
 	"github.com/streamingfast/cli"
+	"go.uber.org/zap"
 )
 
 func promptLanguage() Language {
@@ -16,13 +17,21 @@ func promptVariant() Variant {
 	return cli.PromptSelect("Project variant", slices.Filter(VariantNames(), isSupportedVariant), ParseVariant)
 }
 
-func promptVersion() string {
-	zlog.Debug("asking for version via terminal")
+func promptVersion(defaultVersion string) string {
+	zlog.Debug("asking for version via terminal", zap.String("default", defaultVersion))
+
+	opts := []cli.PromptOption{
+		validateVersionPrompt(),
+	}
+
+	if defaultVersion != "" {
+		opts = append(opts, cli.WithPromptDefaultValue(defaultVersion))
+	}
 
 	return cli.Prompt(
 		fmt.Sprintf("What version do you want to release (current latest tag is %s)", latestTag()),
 		cli.PromptTypeString,
-		validateVersionPrompt(),
+		opts...,
 	)
 }
 

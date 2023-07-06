@@ -78,7 +78,7 @@ func fetchGitSyncState() gitSyncState {
 
 func ensureGitNotDirty() {
 	if isGitDirty() {
-		fmt.Println("Your git repository is dirty, refusing to release (use --allow-dirty to releaser while being Git dirty)")
+		fmt.Println("Your git repository is dirty, refusing to release (use --allow-dirty to continue even if Git is dirty)")
 		run("git status")
 		cli.Exit(1)
 	}

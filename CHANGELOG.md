@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.6.0
+
+* Added `sfreleaser build` to build artifacts, `sfreleaser build --help` for all the juicy details of the new command.
+
+* Bumped to `Golang` `1.20.5`, this will pull `goreleaser/goreleaser-cross:v1.20.5` so expect some delays before your build starts.`
+
+  > **Note** `docker pull goreleaser/goreleaser-cross:v1.20.5` to "boostrap" this step.
+
+* The platform `linux/arm64` is now built by default.
+
+* When version is prompted in release, default value is now extracted from release notes' header.
+
+* Speed up build by mounting local `go env GOCACHE` into the Docker container that build artifacts (only if language == `golang`).
+
 ## v0.5.5
 
 * Validate that received `<version>` argument in `sfreleaser release <version>` actually follows our convention.

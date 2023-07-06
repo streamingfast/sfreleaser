@@ -40,6 +40,25 @@ builds:
     ldflags:
       - -s -w -X main.version={{`{{.Version}}`}}
 
+  - id: linux-arm64
+    main: ./cmd/{{ .global.Binary }}
+    binary: {{ .global.Binary }}
+    goos:
+      - linux
+    goarch:
+      - arm64
+    env:
+      - CGO_ENABLED=1
+      - CC=aarch64-linux-gnu-gcc
+      - CXX=aarch64-linux-gnu-g++
+      - C_INCLUDE_PATH=/usr/aarch64-linux-gnu/include
+      - LIBRARY_PATH=/usr/aarch64-linux-gnu/lib
+    flags:
+      - -trimpath
+      - -mod=readonly
+    ldflags:
+      - -s -w -X main.version={{`{{.Version}}`}}
+
   - id: linux-amd64
     main: ./cmd/{{ .global.Binary }}
     binary: {{ .global.Binary }}
@@ -65,6 +84,7 @@ archives:
       - darwin-amd64
       - darwin-arm64
       - linux-amd64
+      - linux-arm64
     name_template: >-
       {{`{{ .ProjectName }}_`}}
       {{`{{- tolower .Os }}_`}}
