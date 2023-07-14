@@ -5,7 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Next
+## v0.7.0
+
+### Deprecation
+
+The `release.upload-substreams-spkg` has been deprecated in favor of using `pre-build-hooks` and `upload-extra-assets` instead, the replacement code is converting `release.upload-substreams-spkg` using this new system internally.
+
+Change
+
+```yaml
+release:
+  upload-substreams-spkg: substreams.yaml
+```
+
+By
+
+```yaml
+release:
+  pre-build-hooks: ['substreams pack -o "{{ .buildDir }}/{{ .global.Project }}-{{ .release.Version }}.spkg" substreams.yaml"']
+  upload-extra-assets: ["{{ .buildDir }}/{{ .global.Project }}-{{ .release.Version }}.spkg"]
+```
+
+### Added
 
 * If changelog list `Next` as the header, default prompted version is the next patch version.
 

@@ -128,7 +128,7 @@ func build(cmd *cobra.Command, args []string) error {
 	if len(preBuildHooks) > 0 {
 		fmt.Println()
 		fmt.Printf("Executing %d pre-build hook(s)\n", len(preBuildHooks))
-		executeHooks(preBuildHooks, global, &ReleaseModel{Version: version})
+		executeHooks(preBuildHooks, buildDirectory, global, &ReleaseModel{Version: version})
 	}
 
 	if version != "" {

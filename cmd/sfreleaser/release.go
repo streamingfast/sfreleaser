@@ -35,26 +35,36 @@ var ReleaseCmd = Command(release,
 
 			release:
 		    	pre-build-hooks:
-					- <command {{ .version }}>
-					- <command {{ .project }}>
+				- bash -c '{{ .release.Version }}'
+				- echo "{{ .global.Project }}"
 
 		Can be used to run a script before the actual build process so that you can perform
 		so preparation.
 
-		The config value:
+		The upload a Substreams project to your release, define a pre-hook that build the
+		Substreams project and upload it using upload extra assets:
 
 			release:
-				upload-substreams-spkg: <manifest>
+				pre-build-hooks:
+				- substreams pack -o substreams-near-{{ .release.Version }}.spkg
 
 		Can be used to append a Substreams '.spkg' file to your release. If the received <manifest>
 		ends with a '.spkg' extension, it's appended as is. Otherwise, it's assume to be a Substreams
 		project in which case we build the '.spkg' for you.
+
+		## Pre-build hooks template
+
+		When using the 'pre-build-hooks' config value, you can use the following template variables:
+		- {{ .global }}: The global model containing project information (see https://github.com/streamingfast/sfreleaser/blob/master/cmd/sfreleaser/models.go#L13)
+		- {{ .release }}: The release model containing release specific information (see https://github.com/streamingfast/sfreleaser/blob/master/cmd/sfreleaser/models.go#L115)
+		- {{ .build_dir }}: The final build directory used for the build
+
 	`),
 	Flags(func(flags *pflag.FlagSet) {
 		flags.Bool("allow-dirty", false, "Perform release step even if Git is not clean, tries to configured used tool(s) to also allow dirty Git state")
 		flags.String("changelog-path", "CHANGELOG.md", "Path where to find the changelog file used to extract the release notes")
-		flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps")
-		flags.String("upload-substreams-spkg", "", "If provided, add this Substreams package file to the release, if manifest is a 'substreams.yaml' file, the package is first built")
+		flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps, template your pre-hook with various injected variables, see long description of command for more details")
+		flags.StringArray("upload-extra-assets", nil, "If provided, add this extra asset file to the release, use a 'pre-build-hooks' to generate the file if needed")
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
 		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.20.5", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
 
@@ -65,6 +75,10 @@ var ReleaseCmd = Command(release,
 		// Rust Flags
 		flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish' when publishing, the tool might provide some default on its own, Bash rules are used to split the arguments from the string")
 		flags.StringArray("rust-crates", nil, "[Rust only] The list of crates we should publish, the project is expected to be a workspace if this is used")
+
+		// Deprecated Flags
+		flags.String("upload-substreams-spkg", "", "If provided, add this Substreams package file to the release, if manifest is a 'substreams.yaml' file, the package is first built")
+		flags.Lookup("upload-substreams-spkg").Deprecated = "use a --pre-build-hooks to build your '.spkg' and --upload-extra-assets to upload it, see command long description for more details"
 	}),
 	Execute(func(cmd *cobra.Command, args []string) error {
 		sigs := make(chan os.Signal, 1)
@@ -110,6 +124,9 @@ func release(cmd *cobra.Command, args []string) error {
 	goreleaserDockerImage := sflags.MustGetString(cmd, "goreleaser-docker-image")
 	publishNow := sflags.MustGetBool(cmd, "publish-now")
 	preBuildHooks := sflags.MustGetStringArray(cmd, "pre-build-hooks")
+	uploadExtraAssets := sflags.MustGetStringArray(cmd, "upload-extra-assets")
+
+	// Deprecated, use uploadExtraAsset instead with a custom pre build hook for packaging
 	uploadSubstreamsSPKG := sflags.MustGetString(cmd, "upload-substreams-spkg")
 
 	release.populate(cmd, global.Language)
@@ -121,7 +138,9 @@ func release(cmd *cobra.Command, args []string) error {
 		zap.String("goreleaser_docker_image", goreleaserDockerImage),
 		zap.Bool("publish_now", publishNow),
 		zap.Strings("pre_build_hooks", preBuildHooks),
-		zap.String("upload_substreams_spkg", uploadSubstreamsSPKG),
+		zap.String("upload", uploadSubstreamsSPKG),
+		zap.String("upload_substreams_spkg (deprecated)", uploadSubstreamsSPKG),
+		zap.Strings("upload_extra_assets", uploadExtraAssets),
 		zap.Reflect("release_model", release),
 	)
 
@@ -160,13 +179,40 @@ func release(cmd *cobra.Command, args []string) error {
 		ensureGitNotDirty()
 	}
 
+	if uploadSubstreamsSPKG != "" {
+		if !strings.HasSuffix(uploadSubstreamsSPKG, ".spkg") {
+			manifestFile := uploadSubstreamsSPKG
+			uploadSubstreamsSPKG = filepath.Join("{{ .buildDir }}", global.Project+"-"+version+".spkg")
+
+			zlog.Warn(fmt.Sprintf(`the 'upload-substreams-spkg' flag is deprecated, use a custom "pre-build-hooks: ['substreams pack -o "{{ .buildDir }}/substreams-{{ .release.Version }}.spkg" %s'] to package it and 'upload-extra-assets: ['{{ .buildDir }}/substreams-{{ .version }}.spkg'] to attach it to the release`, manifestFile))
+			preBuildHooks = append(preBuildHooks, fmt.Sprintf("substreams pack -o '%s' '%s'", global.ResolveFile(uploadSubstreamsSPKG), global.ResolveFile(manifestFile)))
+		} else {
+			zlog.Warn(fmt.Sprintf("the 'upload-substreams-spkg' flag is deprecated, use a custom 'upload-extra-assets: [%s]' (under 'release' section) to attach it to the release", uploadSubstreamsSPKG))
+		}
+
+		uploadExtraAssets = append(uploadExtraAssets, uploadSubstreamsSPKG)
+	}
+
 	if len(preBuildHooks) > 0 {
 		fmt.Println()
 		fmt.Printf("Executing %d pre-build hook(s)\n", len(preBuildHooks))
-		executeHooks(preBuildHooks, global, release)
+		executeHooks(preBuildHooks, buildDirectory, global, release)
 	}
 
-	uploadSpkgPath := prepareSubstreamsSpkg(uploadSubstreamsSPKG, global, release.Version)
+	if len(uploadExtraAssets) > 0 {
+		fmt.Println()
+		fmt.Printf("Uploading %d extra asset(s)\n", len(uploadExtraAssets))
+
+		model := map[string]any{
+			"global":   global,
+			"release":  release,
+			"buildDir": buildDirectory,
+		}
+
+		for i, extraAsset := range uploadExtraAssets {
+			uploadExtraAssets[i] = resolveAsset(extraAsset, global, model)
+		}
+	}
 
 	fmt.Println()
 	fmt.Println("Creating temporary tag so that goreleaser can work properly")
@@ -187,9 +233,9 @@ func release(cmd *cobra.Command, args []string) error {
 
 	releaseGithub(global, release, gitHubRelease)
 
-	if uploadSpkgPath != "" {
-		fmt.Printf("Uploading Substreams package file %q to release\n", filepath.Base(uploadSpkgPath))
-		run("gh release upload", version, "'"+uploadSpkgPath+"'")
+	for _, extraAsset := range uploadExtraAssets {
+		fmt.Printf("Uploading asset file %q to release\n", filepath.Base(extraAsset))
+		run("gh release upload", version, "'"+extraAsset+"'")
 	}
 
 	releaseURL := releaseURL(version)
@@ -236,10 +282,11 @@ func release(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func executeHooks(hooks []string, global *GlobalModel, release *ReleaseModel) {
+func executeHooks(hooks []string, buildDir string, global *GlobalModel, release *ReleaseModel) {
 	model := map[string]any{
-		"global":  global,
-		"release": release,
+		"global":   global,
+		"release":  release,
+		"buildDir": buildDir,
 	}
 
 	for _, hook := range hooks {
@@ -260,19 +307,17 @@ func executeHook(command string, model map[string]any) {
 	run(out.String())
 }
 
-func prepareSubstreamsSpkg(spkgPath string, global *GlobalModel, version string) string {
-	if spkgPath == "" {
-		return ""
-	}
+func resolveAsset(asset string, global *GlobalModel, model map[string]any) string {
+	parsed, err := template.New("asset").Parse(asset)
+	cli.NoError(err, "Parse asset template %q", asset)
 
-	if !strings.HasSuffix(spkgPath, ".spkg") {
-		spkgPath = filepath.Join(global.WorkingDirectory, "build", global.Project+"-"+version+".spkg")
+	// Hook length + 10% as the initial buffer size
+	out := bytes.NewBuffer(make([]byte, 0, int(float64(len(asset))*1.10)))
+	cli.NoError(parsed.Execute(out, model), "Unable to execute template")
 
-		fmt.Printf("Packing your Substreams file at %q\n", spkgPath)
-		run("substreams pack -o", "'"+spkgPath+"'")
-	}
+	zlog.Debug("asset templated", zap.Stringer("hook", out))
 
-	return spkgPath
+	return global.ResolveFile(out.String())
 }
 
 func verifyTools() {
