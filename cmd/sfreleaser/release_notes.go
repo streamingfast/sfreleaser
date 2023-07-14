@@ -12,7 +12,8 @@ import (
 
 var headerRegex = regexp.MustCompile(`^##([^#]+)`)
 
-func readReleaseNotesVersion(changelogFile string) string {
+// readVersionFromChangelog will try to infer the default version from the changelog file.
+func readVersionFromChangelog(changelogFile string) string {
 	if !cli.FileExists(changelogFile) {
 		return ""
 	}
@@ -35,6 +36,8 @@ func readReleaseNotesVersion(changelogFile string) string {
 	return ""
 }
 
+var versionRegex = regexp.MustCompile(`v?([0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9\-_]*)`)
+
 func extractVersionFromHeader(header string) string {
 	matches := headerRegex.FindAllStringSubmatch(header, 1)
 	if len(matches) != 1 {
@@ -53,7 +56,13 @@ func extractVersionFromHeader(header string) string {
 
 	normalizedVersion := strings.ToLower(version)
 	if normalizedVersion != "unreleased" && normalizedVersion != "next" {
-		return version
+		groups := versionRegex.FindStringSubmatch(normalizedVersion)
+		if len(groups) != 2 {
+			// Nothing found, should had 2 group
+			return ""
+		}
+
+		return "v" + groups[1]
 	}
 
 	return ""

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Next
 
+* If changelog list `Next` as the header, default prompted version is the next patch version.
+
+* Extracted version from CHANGELOG is now much more selective.
+
+* Prevent release if changelog extracted version and latest tag version are the same.
+
 * Added `global.sfreleaser-min-version` configuration value to force users to upgrade to a new version of `sfreleaser`.
 
 ## v0.6.0

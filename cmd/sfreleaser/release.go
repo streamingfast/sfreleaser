@@ -132,7 +132,7 @@ func release(cmd *cobra.Command, args []string) error {
 	verifyTools()
 
 	if release.Version == "" {
-		release.Version = promptVersion(readReleaseNotesVersion(changelogPath))
+		release.Version = promptVersion(changelogPath)
 	}
 
 	// For simplicity in the code below

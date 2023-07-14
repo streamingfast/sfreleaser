@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/bobg/go-generics/v2/slices"
+	versioning "github.com/hashicorp/go-version"
 	"github.com/streamingfast/cli"
 	"go.uber.org/zap"
 )
@@ -17,8 +18,28 @@ func promptVariant() Variant {
 	return cli.PromptSelect("Project variant", slices.Filter(VariantNames(), isSupportedVariant), ParseVariant)
 }
 
-func promptVersion(defaultVersion string) string {
-	zlog.Debug("asking for version via terminal", zap.String("default", defaultVersion))
+func promptVersion(changelogPath string) string {
+	latestTag := latestTag()
+	defaultVersion := readVersionFromChangelog(changelogPath)
+
+	zlog.Debug("asking for version via terminal", zap.String("default", defaultVersion), zap.String("changelog_path", changelogPath))
+	if defaultVersion == latestTag {
+		cli.Quit(cli.Dedent(`
+			Latest tag %q is the same as latest version extracted from your changelog, you can't
+			release the same version twice.
+		`), latestTag)
+	}
+
+	if defaultVersion == "" && latestTag != "" {
+		latestVersion, err := versioning.NewVersion(latestTag)
+		cli.NoError(err, "unable to parse latest tag %q", latestTag)
+
+		latestSegments := latestVersion.Segments()
+
+		// Version is always valid
+		nextVersion, _ := versioning.NewVersion(fmt.Sprintf("%d.%d.%d", latestSegments[0], latestSegments[1], latestSegments[2]+1))
+		defaultVersion = "v" + nextVersion.String()
+	}
 
 	opts := []cli.PromptOption{
 		validateVersionPrompt(),
@@ -29,7 +50,7 @@ func promptVersion(defaultVersion string) string {
 	}
 
 	return cli.Prompt(
-		fmt.Sprintf("What version do you want to release (current latest tag is %s)", latestTag()),
+		fmt.Sprintf("What version do you want to release (current latest tag is %s)", latestTag),
 		cli.PromptTypeString,
 		opts...,
 	)
