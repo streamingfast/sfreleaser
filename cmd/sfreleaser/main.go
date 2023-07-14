@@ -5,8 +5,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"runtime"
 
+	versioning "github.com/hashicorp/go-version"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"github.com/streamingfast/cli"
 	. "github.com/streamingfast/cli"
 	"go.uber.org/zap"
@@ -32,6 +37,7 @@ func main() {
 		ConfigureViper("SFRELEASER"),
 		ConfigureReleaserConfigFile(),
 		ConfigureVersion(version),
+		ConfigureCheckMinVersion(),
 
 		DoctorCmd,
 		BuildCmd,
@@ -58,8 +64,92 @@ func main() {
 			flags.StringP("variant", "v", "", "Defines the variant of the project")
 			flags.StringP("project", "p", "", "Override default computed project name which is directory of root/working directory folder")
 			flags.String("root", "", "If defined, change the working directory of the process before proceeding with the release")
+			flags.String("sfreleaser-min-version", "", "If sets, will check that the version of sfreleaser is at least this version before attempting the build")
 		}),
 	)
+}
+
+func ConfigureCheckMinVersion() cli.CommandOption {
+	return cli.CommandOptionFunc(func(cmd *cobra.Command) {
+		root := cmd.Root()
+
+		hook := checkMinVersion
+		if actual := root.PersistentPreRun; actual != nil {
+			hook = func(cmd *cobra.Command, args []string) {
+				actual(cmd, args)
+
+				// We do the checker after the actual hook, so that we can be sure that
+				// configuration is loaded properly from file
+				checkMinVersion(cmd, args)
+			}
+		}
+
+		root.PersistentPreRun = hook
+	})
+}
+
+var goRuntimeFileTaggedVersionRegex = regexp.MustCompile(`sfreleaser@(v[0-9]+\.[0-9]+\.[0-9]+[\.|-]?((alpha|beta|rc)[\.|-][0-9]+)?)/`)
+
+func checkMinVersion(cmd *cobra.Command, _ []string) {
+	minVersionRaw := viper.GetString("global.sfreleaser-min-version")
+	if minVersionRaw == "" {
+		return
+	}
+
+	actualVersionRaw := version
+	if actualVersionRaw == "dev" {
+		// When the version is dev, it can be because the user is running the binary installed
+		// through `go install` in which case we extract the version to check against from the
+		// go module full path which embeds the version.
+		//
+		// If you are a developer, use the `devel/sfreleaser` binary instead of `go install` to
+		// build your version to avoid this problem (use `direnv` to automatically fix your PATH).
+		_, file, _, ok := runtime.Caller(0)
+		if fileVersion := extractVersionFromRuntimeCallerFile(file); ok && fileVersion != "" {
+			actualVersionRaw = fileVersion
+		}
+	}
+
+	if actualVersionRaw == "dev" {
+		cli.Quit(`You are running a development version of 'sfreleaser', please use a released version to proceed.`)
+	}
+
+	minVersion, err := versioning.NewVersion(minVersionRaw)
+	cli.NoError(err, "the 'sfreleaser-min-version' flag value %q is invalid", minVersionRaw)
+
+	actualVersion, err := versioning.NewVersion(actualVersionRaw)
+	cli.NoError(err, "the actual version %q is invalid", actualVersionRaw)
+
+	if actualVersion.LessThan(minVersion) {
+		onMinVersionCheckFailed(actualVersionRaw, minVersionRaw)
+	}
+}
+
+func extractVersionFromRuntimeCallerFile(file string) string {
+	if groups := goRuntimeFileTaggedVersionRegex.FindStringSubmatch(file); len(groups) > 0 {
+		return groups[1]
+	}
+
+	return ""
+}
+
+func onMinVersionCheckFailed(actualVersion string, acceptedMinVersion string) {
+	cli.Quit(cli.Dedent(`
+			You current version of 'sfreleaser' %q is outdated, please upgrade to
+			at least %q.
+
+			On Linux and MacOS, you can upgrade with:
+
+				brew upgrade streamingfast/tap/sfreleaser
+
+			You can upgrade by downloading the latest release from:
+
+				https://github.com/streamingfast/sfreleaser/releases/latest
+
+			You can also install from Go directly if you are a Golang developer:
+
+				go install github.com/streamingfast/sfreleaser/cmd/sfreleaser@latest
+		`), actualVersion, acceptedMinVersion)
 }
 
 func verifyCommand(command string, onErrorText string) {

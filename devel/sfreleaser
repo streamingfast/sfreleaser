@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
+GOPATH=`go env GOPATH`
+
+active_pid=
+
+main() {
+  set -e
+
+  # Update manually from time to time so that development version compiled
+  # from this script have the version embedded which prevents problem when
+  # running the version checker that has no idea what to do with 'dev' version.
+  version="v0.7.1"
+  if [[ ! -z SFRELEASER_DEV_VERSION ]]; then
+    version="$SFRELEASER_DEV_VERSION"
+  fi
+
+  pushd "$ROOT" &> /dev/null
+    go install -ldflags "-X main.version=$version" ./cmd/sfreleaser
+  popd &> /dev/null
+
+  if [[ $KILL_AFTER != "" ]]; then
+    "$GOPATH/bin/sfreleaser" "$@" &
+    active_pid=$!
+
+    sleep $KILL_AFTER
+    kill -s TERM $active_pid &> /dev/null || true
+  else
+    exec "$GOPATH/bin/sfreleaser" "$@"
+  fi
+}
+
+main "$@"
