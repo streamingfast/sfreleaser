@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.7.2
+
+* Enforce `--platform <platform>` when calling `docker run` to ensure the fastest image for the current's user machine is used.
+
+* Now printing exact image used when performing the release.
+
 ## v0.7.1
 
 * Bumped to `Golang` `1.21`, this will pull `goreleaser/goreleaser-cross:v1.21` so expect some delays before your build starts.`

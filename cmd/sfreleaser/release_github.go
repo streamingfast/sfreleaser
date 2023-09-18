@@ -47,10 +47,16 @@ func releaseGithub(global *GlobalModel, release *ReleaseModel, githubRelease *Gi
 }
 
 func goreleaseDockerCommand(global *GlobalModel, githubRelease *GitHubReleaseModel, command string, dockerExtraArguments []string, goReleaserExtraArguments []string) []string {
+	platform := "linux/amd64"
+	if runtime.GOARCH == "arm64" {
+		platform = "linux/arm64"
+	}
+
 	arguments := []string{
 		"docker",
 
 		"run",
+		"--platform", platform,
 		"--rm",
 		"-e CGO_ENABLED=1",
 		"--env-file", githubRelease.EnvFilePath,
