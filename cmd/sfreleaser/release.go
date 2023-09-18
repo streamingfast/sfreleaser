@@ -321,7 +321,7 @@ func resolveAsset(asset string, global *GlobalModel, model map[string]any) strin
 }
 
 func verifyTools() {
-	verifyCommand("docker", cli.Dedent(`
+	ensureCommandExist("docker", cli.Dedent(`
 		The 'docker' utility (https://docs.docker.com/get-docker/) is perform the
 		release.
 
@@ -330,7 +330,7 @@ func verifyTools() {
 		system. You should also allocate minimally 4 CPU and 8GiB of RAM.
 	`))
 
-	verifyCommandRunSuccesfully("docker info", cli.Dedent(`
+	ensureCommandRunSuccesfully("docker info", cli.Dedent(`
 		Ensure that your Docker Engine is currently running, it seems it's not running
 		right now because the command 'docker info' failed.
 
@@ -339,7 +339,7 @@ func verifyTools() {
 		execution of the 'docker info' command to get its exit code).
 	`))
 
-	verifyCommand("gh", cli.Dedent(`
+	ensureCommandExist("gh", cli.Dedent(`
 		The GitHub CLI utility (https://cli.github.com/) is required to obtain
 		information about the current draft release.
 

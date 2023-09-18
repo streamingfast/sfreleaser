@@ -149,6 +149,8 @@ func build(cmd *cobra.Command, args []string) error {
 		GoreleaserImageID:   goreleaserDockerImage,
 	}
 
+	fmt.Println()
+	fmt.Printf("Building artifacts using image %q\n", goreleaserDockerImage)
 	buildArtifacts(global, build, gitHubRelease)
 
 	return nil

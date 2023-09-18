@@ -152,7 +152,7 @@ func onMinVersionCheckFailed(actualVersion string, acceptedMinVersion string) {
 		`), actualVersion, acceptedMinVersion)
 }
 
-func verifyCommand(command string, onErrorText string) {
+func ensureCommandExist(command string, onErrorText string) {
 	zlog.Debug("verifying command", zap.String("command", command))
 
 	_, err := exec.LookPath(command)
@@ -167,8 +167,8 @@ func verifyCommand(command string, onErrorText string) {
 	}
 }
 
-func verifyCommandRunSuccesfully(command string, onErrorText string) {
-	verifyCommand("docker", onErrorText)
+func ensureCommandRunSuccesfully(command string, onErrorText string) {
+	ensureCommandExist("docker", onErrorText)
 
 	output, _, err := maybeResultOf(command)
 	if err != nil {

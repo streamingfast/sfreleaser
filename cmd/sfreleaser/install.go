@@ -16,7 +16,7 @@ import (
 
 var InstallCmd = Command(install,
 	"install",
-	"Install the necessary files configuration files like .goreleaser",
+	"Install the necessary files configuration files",
 	Flags(func(flags *pflag.FlagSet) {
 		flags.BoolP("overwrite", "f", false, "[Destructive] Overwrite configuration files that already exists")
 	}),
