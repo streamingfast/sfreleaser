@@ -44,7 +44,7 @@ func renderGoreleaserFile(global *GlobalModel, release *ReleaseModel, github *Gi
 		goreleaserTemplate = goreleaserLibTmpl
 	}
 
-	renderTemplate(github.GoreleaseConfigPath, true, goreleaserTemplate, getReleaseTemplateModel(global, release))
+	renderTemplate(github.GoreleaserConfigPath, true, goreleaserTemplate, getReleaseTemplateModel(global, release))
 }
 
 func renderTemplate(file string, overwrite bool, tmplContent []byte, model map[string]any) (wrote string) {

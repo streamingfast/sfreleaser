@@ -36,7 +36,7 @@ func readVersionFromChangelog(changelogFile string) string {
 	return ""
 }
 
-var versionRegex = regexp.MustCompile(`v?([0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9\-_]*)`)
+var versionRegex = regexp.MustCompile(`v?([0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9\-_\.]*)`)
 
 func extractVersionFromHeader(header string) string {
 	matches := headerRegex.FindAllStringSubmatch(header, 1)

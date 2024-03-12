@@ -1,12 +1,10 @@
-version: 2
-
 env_files:
   github_token: ~/.config/goreleaser/github_token
 
 builds:
   - id: darwin-amd64
-    main: ./cmd/{{ .global.Binary }}
-    binary: {{ .global.Binary }}
+    main: ./cmd/
+    binary: 
     goos:
       - darwin
     goarch:
@@ -21,11 +19,11 @@ builds:
       - -trimpath
       - -mod=readonly
     ldflags:
-      - -s -w -X main.version={{`{{.Version}}`}}
+      - -s -w -X main.version={{.Version}}
 
   - id: darwin-arm64
-    main: ./cmd/{{ .global.Binary }}
-    binary: {{ .global.Binary }}
+    main: ./cmd/
+    binary: 
     goos:
       - darwin
     goarch:
@@ -40,11 +38,11 @@ builds:
       - -trimpath
       - -mod=readonly
     ldflags:
-      - -s -w -X main.version={{`{{.Version}}`}}
+      - -s -w -X main.version={{.Version}}
 
   - id: linux-arm64
-    main: ./cmd/{{ .global.Binary }}
-    binary: {{ .global.Binary }}
+    main: ./cmd/
+    binary: 
     goos:
       - linux
     goarch:
@@ -59,11 +57,11 @@ builds:
       - -trimpath
       - -mod=readonly
     ldflags:
-      - -s -w -X main.version={{`{{.Version}}`}}
+      - -s -w -X main.version={{.Version}}
 
   - id: linux-amd64
-    main: ./cmd/{{ .global.Binary }}
-    binary: {{ .global.Binary }}
+    main: ./cmd/
+    binary: 
     goos:
       - linux
     goarch:
@@ -78,31 +76,31 @@ builds:
       - -trimpath
       - -mod=readonly
     ldflags:
-      - -s -w -X main.version={{`{{.Version}}`}}
+      - -s -w -X main.version={{.Version}}
 
 archives:
-  - id: {{ .global.Project }}
+  - id: project
     builds:
       - darwin-amd64
       - darwin-arm64
       - linux-amd64
       - linux-arm64
     name_template: >-
-      {{`{{ .ProjectName }}_`}}
-      {{`{{- tolower .Os }}_`}}
-      {{`{{- if eq .Arch "amd64" }}x86_64`}}
-      {{`{{- else if eq .Arch "386" }}i386`}}
-      {{`{{- else }}{{ tolower .Arch }}{{ end }}`}}
+      {{ .ProjectName }}_
+      {{- tolower .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ tolower .Arch }}{{ end }}
     format: tar.gz
     files:
-    {{ if .release.ReadmeRelativePath }}- {{ .release.ReadmeRelativePath }}{{ end }}
-    {{ if .release.LicenseRelativePath }}- {{ .release.LicenseRelativePath }}{{ end }}
+    - README.md
+    
 
 checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  name_template: "{{`{{ .Tag }}`}}"
+  name_template: "{{ .Tag }}"
 
 changelog:
   sort: asc
@@ -115,22 +113,8 @@ changelog:
 release:
   draft: true
   replace_existing_draft: true
-  name_template: '{{`{{ .Tag }}`}}'
-  target_commitish: '{{`{{ .Commit }}`}}'
+  name_template: '{{ .Tag }}'
+  target_commitish: '{{ .Commit }}'
   github:
-    owner: {{ .global.Owner }}
-    name: {{ .global.Project }}
-
-{{- if not .release.Brew.Disabled }}
-brews:
-  - name: {{ .global.Project }}
-    ids:
-    - {{ .global.Project }}
-    repository:
-      owner: {{ .global.Owner }}
-      name: {{ .release.Brew.TapRepo }}
-    commit_author:
-      name: goreleaser
-    homepage: "https://github.com/{{ .global.Owner }}/{{ .global.Project }}"
-    license: {{ .global.License }}
-{{- end }}
+    owner: owner
+    name: project

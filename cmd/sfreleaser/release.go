@@ -129,7 +129,7 @@ func release(cmd *cobra.Command, args []string) error {
 	// Deprecated, use uploadExtraAsset instead with a custom pre build hook for packaging
 	uploadSubstreamsSPKG := sflags.MustGetString(cmd, "upload-substreams-spkg")
 
-	release.populate(cmd, global.Language)
+	release.populate(cmd, global)
 
 	zlog.Debug("starting 'sfreleaser release'",
 		zap.Inline(global),
@@ -151,7 +151,7 @@ func release(cmd *cobra.Command, args []string) error {
 	verifyTools()
 
 	if release.Version == "" {
-		release.Version = promptVersion(changelogPath)
+		release.Version = promptVersion(changelogPath, global.GitRemote)
 	}
 
 	// For simplicity in the code below
@@ -163,7 +163,7 @@ func release(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Releasing %q (Draft: %t, Publish Now: %t) in %s...\n", version, !publishNow, publishNow, delay)
 	time.Sleep(delay)
 
-	ensureGitSync()
+	ensureGitSync(global)
 
 	buildDirectory := "build"
 	envFilePath := filepath.Join(buildDirectory, ".env.release")
@@ -224,11 +224,11 @@ func release(cmd *cobra.Command, args []string) error {
 	})
 
 	gitHubRelease := &GitHubReleaseModel{
-		AllowDirty:          allowDirty,
-		EnvFilePath:         envFilePath,
-		GoreleaseConfigPath: filepath.Join(buildDirectory, "goreleaser.yaml"),
-		GoreleaserImageID:   goreleaserDockerImage,
-		ReleaseNotesPath:    releaseNotesPath,
+		AllowDirty:           allowDirty,
+		EnvFilePath:          envFilePath,
+		GoreleaserConfigPath: filepath.Join(buildDirectory, "goreleaser.yaml"),
+		GoreleaserImageID:    goreleaserDockerImage,
+		ReleaseNotesPath:     releaseNotesPath,
 	}
 
 	releaseGithub(global, release, gitHubRelease)

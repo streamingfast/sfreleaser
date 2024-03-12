@@ -143,10 +143,10 @@ func build(cmd *cobra.Command, args []string) error {
 	}
 
 	gitHubRelease := &GitHubReleaseModel{
-		AllowDirty:          allowDirty,
-		EnvFilePath:         envFilePath,
-		GoreleaseConfigPath: filepath.Join(buildDirectory, "goreleaser.yaml"),
-		GoreleaserImageID:   goreleaserDockerImage,
+		AllowDirty:           allowDirty,
+		EnvFilePath:          envFilePath,
+		GoreleaserConfigPath: filepath.Join(buildDirectory, "goreleaser.yaml"),
+		GoreleaserImageID:    goreleaserDockerImage,
 	}
 
 	fmt.Println()

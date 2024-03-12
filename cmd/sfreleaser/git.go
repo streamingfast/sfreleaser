@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func ensureGitSync() {
+func ensureGitSync(global *GlobalModel) {
 	state := fetchGitSyncState()
 
 	switch state {
@@ -17,12 +17,12 @@ func ensureGitSync() {
 
 	case gitSyncNeedPull:
 		if yes, _ := cli.PromptConfirm("It seems you need to 'git pull', do it now?"); yes {
-			run("git pull")
+			run("git pull", global.GitRemote)
 		}
 
 	case gitSyncNeedPush:
 		fmt.Println("Pushing our changes to Git so it knowns about our commit(s)")
-		run("git push")
+		run("git push", global.GitRemote)
 
 	case gitSyncDiverged:
 		fmt.Println("Your branch has diverged from remote, cannot continue")
@@ -90,13 +90,13 @@ func isGitDirty() bool {
 
 var remoteTagRegex = regexp.MustCompile(`refs/tags/(v?[0-9]+\.[0-9]+\.[0-9]+[^\s]*)`)
 
-func latestTag() (latestTag string) {
+func latestTag(remote string) (latestTag string) {
 	defer func() {
 		zlog.Debug("latest tag", zap.String("found", latestTag))
 	}()
 
 	// We use `maybeResultOf` but ignore error so no error is printed
-	output, _, _ := maybeResultOf("git -c 'versionsort.suffix=-' ls-remote --exit-code --refs --sort='version:refname' --tags origin '*.*.*'")
+	output, _, _ := maybeResultOf("git -c 'versionsort.suffix=-' ls-remote --exit-code --refs --sort='version:refname' --tags", remote, "'*.*.*'")
 
 	lines := getLines(output)
 	if len(lines) == 0 {

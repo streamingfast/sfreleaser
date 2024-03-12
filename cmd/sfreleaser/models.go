@@ -1,25 +1,46 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/streamingfast/cli"
 	"github.com/streamingfast/cli/sflags"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 type GlobalModel struct {
-	Owner      string
-	Project    string
-	Binary     string
-	Language   Language
-	License    string
-	Variant    Variant
-	Root       string
+	Owner    string
+	Project  string
+	Binary   string
+	Language Language
+	License  string
+	Variant  Variant
+	// The root of the project as provided by the user, never modified,
+	// most usage should use `WorkingDirectory` instead which is computed
+	// from this value when set.
+	Root string
+
+	// ConfigRoot is the absolute path to the directory containing the ".sfreleaser"
+	// file. It is computed from [WorkingDirectory] (which itself can be overriden by [Root]).
+	//
+	// The [Root]/[WorkingDirectory] could be different then [ConfigRoot] if the user
+	// executes in a subdirectory of the project and the ".sfreleaser" file is in the
+	// root of the project.
 	ConfigRoot string
 
+	GitRemote string
+
+	// WorkingDirectory is the absolute path to directory all command should use
+	// when execution and is computed based on other configuration values found
+	// in this model.
+	//
+	// The value is first initialized to `os.Getwd()`, if `Root` is set, [WorkingDirectory]
+	// is set to `cli.AbsolutePath(Root)`.
 	WorkingDirectory string
 }
 
@@ -32,19 +53,21 @@ func (g *GlobalModel) MarshalLogObject(encoder zapcore.ObjectEncoder) error {
 	encoder.AddString("variant", g.Variant.String())
 	encoder.AddString("config_root", g.ConfigRoot)
 	encoder.AddString("working_directory", g.WorkingDirectory)
+	encoder.AddString("git_remote", g.GitRemote)
 
 	return nil
 }
 
 func mustGetGlobal(cmd *cobra.Command) *GlobalModel {
 	global := &GlobalModel{
-		Owner:    sflags.MustGetString(cmd, "owner"),
-		Project:  sflags.MustGetString(cmd, "project"),
-		Binary:   sflags.MustGetString(cmd, "binary"),
-		Language: mustGetLanguage(cmd),
-		License:  sflags.MustGetString(cmd, "license"),
-		Variant:  mustGetVariant(cmd),
-		Root:     sflags.MustGetString(cmd, "root"),
+		Owner:     sflags.MustGetString(cmd, "owner"),
+		Project:   sflags.MustGetString(cmd, "project"),
+		Binary:    sflags.MustGetString(cmd, "binary"),
+		Language:  mustGetLanguage(cmd),
+		License:   sflags.MustGetString(cmd, "license"),
+		Variant:   mustGetVariant(cmd),
+		Root:      sflags.MustGetString(cmd, "root"),
+		GitRemote: sflags.MustGetString(cmd, "git-remote"),
 	}
 
 	global.WorkingDirectory = cli.WorkingDirectory()
@@ -115,19 +138,41 @@ func (m *BuildModel) populate(cmd *cobra.Command) {
 type ReleaseModel struct {
 	Version string
 
+	// The relative path (aginst the root of the project) to the file containing
+	// the README of the project. The file for now is inferred when populating the
+	// model by trying to find the files "README.md" and "README" in the root of the
+	// project (only root folder is explored, not recursive).
+	ReadmeRelativePath *string
+
+	// The relative path (aginst the root of the project) to the file containing
+	// the LICENSE of the project. The file for now is inferred when populating the
+	// model by trying to find the files "LICENSE.md" and "LICENSE" in the root of the
+	// project (only root folder is explored, not recursive).
+	LicenseRelativePath *string
+
 	Brew *BrewReleaseModel
 
 	// Rust is populated only if config if of type Rust
 	Rust *RustReleaseModel
 }
 
-func (m *ReleaseModel) populate(cmd *cobra.Command, language Language) {
+func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
+	m.ReadmeRelativePath = findFile(global.WorkingDirectory, orMatcher(
+		caseInsensitiveMatcher("README.md"),
+		caseInsensitiveMatcher("README"),
+	))
+
+	m.LicenseRelativePath = findFile(global.WorkingDirectory, orMatcher(
+		caseInsensitiveMatcher("LICENSE.md"),
+		caseInsensitiveMatcher("LICENSE"),
+	))
+
 	m.Brew = &BrewReleaseModel{
 		Disabled: sflags.MustGetBool(cmd, "brew-disabled"),
 		TapRepo:  sflags.MustGetString(cmd, "brew-tap-repo"),
 	}
 
-	switch language {
+	switch global.Language {
 	case LanguageGolang:
 		// Nothing
 
@@ -138,7 +183,38 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, language Language) {
 		m.Rust.Crates = sflags.MustGetStringArray(cmd, "rust-crates")
 
 	default:
-		cli.Quit("unhandled language %q", language)
+		cli.Quit("unhandled language %q", global.Language)
+	}
+}
+
+func findFile(root string, matcher func(in string) bool) *string {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		zlog.Warn("unable to walk config root directory", zap.String("root", root), zap.Error(err))
+		return nil
+	}
+
+	for _, entry := range entries {
+		if matcher(entry.Name()) {
+			name := entry.Name()
+			return &name
+		}
+	}
+
+	return nil
+}
+
+func orMatcher(matchers ...func(string) bool) func(string) bool {
+	return func(in string) bool {
+		return slices.ContainsFunc(matchers, func(matcher func(string) bool) bool {
+			return matcher(in)
+		})
+	}
+}
+
+func caseInsensitiveMatcher(in string) func(string) bool {
+	return func(name string) bool {
+		return strings.EqualFold(name, in)
 	}
 }
 
@@ -148,11 +224,11 @@ type RustReleaseModel struct {
 }
 
 type GitHubReleaseModel struct {
-	AllowDirty          bool
-	EnvFilePath         string
-	GoreleaseConfigPath string
-	GoreleaserImageID   string
-	ReleaseNotesPath    string
+	AllowDirty           bool
+	EnvFilePath          string
+	GoreleaserConfigPath string
+	GoreleaserImageID    string
+	ReleaseNotesPath     string
 }
 
 type BrewReleaseModel struct {

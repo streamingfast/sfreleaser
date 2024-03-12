@@ -143,7 +143,7 @@ func publishReleaseNow(global *GlobalModel, release *ReleaseModel) {
 	cli.ExitHandler(deleteTagExitHandlerID, nil)
 
 	zlog.Debug("refreshing git tags now that release happened")
-	runSilent(fmt.Sprintf(`git fetch origin +refs/tags/%s:refs/tags/%s`, version, version))
+	runSilent(fmt.Sprintf(`git fetch %s +refs/tags/%s:refs/tags/%s`, global.GitRemote, version, version))
 }
 
 func reviewRelease(releaseURL string) {

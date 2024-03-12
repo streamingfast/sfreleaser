@@ -18,8 +18,8 @@ func promptVariant() Variant {
 	return cli.PromptSelect("Project variant", slices.Filter(VariantNames(), isSupportedVariant), ParseVariant)
 }
 
-func promptVersion(changelogPath string) string {
-	latestTag := latestTag()
+func promptVersion(changelogPath string, gitRemote string) string {
+	latestTag := latestTag(gitRemote)
 	defaultVersion := readVersionFromChangelog(changelogPath)
 
 	zlog.Debug("asking for version via terminal", zap.String("default", defaultVersion), zap.String("changelog_path", changelogPath))

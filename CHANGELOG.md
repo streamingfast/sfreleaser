@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+* Fixed CHANGELOG release version extraction to accept dots too.
+
+* Fixed when LICENSE and README are not present or spelled a bit differently.
+
+* Added support to override the Git remote used for commands with `sfreleaser --git-remote=sf ...`.
+
 * Bumped to `Golang` `1.22`, this will pull `goreleaser/goreleaser-cross:v1.22` so expect some delays before your build starts.
 
 ## v0.7.2

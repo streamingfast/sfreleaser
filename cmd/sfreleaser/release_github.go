@@ -79,7 +79,7 @@ func goreleaseDockerCommand(global *GlobalModel, githubRelease *GitHubReleaseMod
 
 		// goreleaser arguments
 		command,
-		"-f", githubRelease.GoreleaseConfigPath,
+		"-f", githubRelease.GoreleaserConfigPath,
 		"--timeout=60m",
 		"--clean",
 	}...)

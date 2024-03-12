@@ -65,6 +65,7 @@ func main() {
 			flags.StringP("project", "p", "", "Override default computed project name which is directory of root/working directory folder")
 			flags.String("root", "", "If defined, change the working directory of the process before proceeding with the release")
 			flags.String("sfreleaser-min-version", "", "If sets, will check that the version of sfreleaser is at least this version before attempting the build")
+			flags.String("git-remote", "origin", "The git remote to use for pushing the release and commits")
 		}),
 	)
 }
