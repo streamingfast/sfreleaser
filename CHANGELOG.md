@@ -7,23 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-* Fixed CHANGELOG release version extraction to accept dots too.
+- Fixed wrong error when a project was never release.
 
-* Fixed when LICENSE and README are not present or spelled a bit differently.
+- Fixed CHANGELOG release version extraction to accept dots too.
 
-* Added support to override the Git remote used for commands with `sfreleaser --git-remote=sf ...`.
+- Fixed when LICENSE and README are not present or spelled a bit differently.
 
-* Bumped to `Golang` `1.22`, this will pull `goreleaser/goreleaser-cross:v1.22` so expect some delays before your build starts.
+- Added support to override the Git remote used for commands with `sfreleaser --git-remote=sf ...`.
+
+- Bumped to `Golang` `1.22`, this will pull `goreleaser/goreleaser-cross:v1.22` so expect some delays before your build starts.
 
 ## v0.7.2
 
-* Enforce `--platform <platform>` when calling `docker run` to ensure the fastest image for the current's user machine is used.
+- Enforce `--platform <platform>` when calling `docker run` to ensure the fastest image for the current's user machine is used.
 
-* Now printing exact image used when performing the release.
+- Now printing exact image used when performing the release.
 
 ## v0.7.1
 
-* Bumped to `Golang` `1.21`, this will pull `goreleaser/goreleaser-cross:v1.21` so expect some delays before your build starts.
+- Bumped to `Golang` `1.21`, this will pull `goreleaser/goreleaser-cross:v1.21` so expect some delays before your build starts.
 
 ## v0.7.0
 
@@ -42,103 +44,106 @@ By
 
 ```yaml
 release:
-  pre-build-hooks: ['substreams pack -o "{{ .buildDir }}/{{ .global.Project }}-{{ .release.Version }}.spkg" substreams.yaml"']
-  upload-extra-assets: ["{{ .buildDir }}/{{ .global.Project }}-{{ .release.Version }}.spkg"]
+  pre-build-hooks:
+    [
+      'substreams pack -o "{{ .buildDir }}/{{ .global.Project }}-{{ .release.Version }}.spkg" substreams.yaml"',
+    ]
+  upload-extra-assets:
+    ["{{ .buildDir }}/{{ .global.Project }}-{{ .release.Version }}.spkg"]
 ```
 
 ### Added
 
-* If changelog list `Next` as the header, default prompted version is the next patch version.
+- If changelog list `Next` as the header, default prompted version is the next patch version.
 
-* Extracted version from CHANGELOG is now much more selective.
+- Extracted version from CHANGELOG is now much more selective.
 
-* Prevent release if changelog extracted version and latest tag version are the same.
+- Prevent release if changelog extracted version and latest tag version are the same.
 
-* Added `global.sfreleaser-min-version` configuration value to force users to upgrade to a new version of `sfreleaser`.
+- Added `global.sfreleaser-min-version` configuration value to force users to upgrade to a new version of `sfreleaser`.
 
 ## v0.6.0
 
-* Added `sfreleaser build` to build artifacts, `sfreleaser build --help` for all the juicy details of the new command.
+- Added `sfreleaser build` to build artifacts, `sfreleaser build --help` for all the juicy details of the new command.
 
-* Bumped to `Golang` `1.20.5`, this will pull `goreleaser/goreleaser-cross:v1.20.5` so expect some delays before your build starts.`
+- Bumped to `Golang` `1.20.5`, this will pull `goreleaser/goreleaser-cross:v1.20.5` so expect some delays before your build starts.`
 
   > **Note** `docker pull goreleaser/goreleaser-cross:v1.20.5` to "boostrap" this step.
 
-* The platform `linux/arm64` is now built by default.
+- The platform `linux/arm64` is now built by default.
 
-* When version is prompted in release, default value is now extracted from release notes' header.
+- When version is prompted in release, default value is now extracted from release notes' header.
 
-* Speed up build by mounting local `go env GOCACHE` into the Docker container that build artifacts (only if language == `golang`).
+- Speed up build by mounting local `go env GOCACHE` into the Docker container that build artifacts (only if language == `golang`).
 
 ## v0.5.5
 
-* Validate that received `<version>` argument in `sfreleaser release <version>` actually follows our convention.
+- Validate that received `<version>` argument in `sfreleaser release <version>` actually follows our convention.
 
 ## v0.5.4
 
-* Added a way to disable usage of PTY to call commands (define environment variable `SFRELEASER_DISABLE_PTY=true`).
+- Added a way to disable usage of PTY to call commands (define environment variable `SFRELEASER_DISABLE_PTY=true`).
 
 ## v0.5.3
 
 ### Fixed
 
-* Fixed an issue when the github token has some leading or trailing spaces, like a new line.
+- Fixed an issue when the github token has some leading or trailing spaces, like a new line.
 
 ## v0.5.2
 
 ### Changed
 
-* Improved `sfreleaser release` to print some troubleshooting idea using `sfreleaser doctor`.
+- Improved `sfreleaser release` to print some troubleshooting idea using `sfreleaser doctor`.
 
 ## v0.5.1
 
 ### Added
 
-* Added support for `brew-tap-repo` to set the Brew tap repository where to push the binary (config at `release.brew-tap-repo`).
+- Added support for `brew-tap-repo` to set the Brew tap repository where to push the binary (config at `release.brew-tap-repo`).
 
 ## v0.5.0
 
 ### Added
 
-* Removed the need to have `.goreleaser.yaml` file in the repository (file is now generated on the fly).
+- Removed the need to have `.goreleaser.yaml` file in the repository (file is now generated on the fly).
 
-* Added support for disabling Brew tap release (enabled by default).
+- Added support for disabling Brew tap release (enabled by default).
 
-* Added support for specifying `owner` (defaults to `streamingfast`).
+- Added support for specifying `owner` (defaults to `streamingfast`).
 
-* Added support for specifying `license` (defaults to `Apache-2.0`).
+- Added support for specifying `license` (defaults to `Apache-2.0`).
 
 ## v0.4.2
 
-* Added support for resolving files relative to `.sfreleaser` location.
+- Added support for resolving files relative to `.sfreleaser` location.
 
-* Added support for specifying a non-default changelog file.
+- Added support for specifying a non-default changelog file.
 
 ## v0.4.1
 
-* Added checks that `docker` CLI exists and also that `docker info` works properly.
+- Added checks that `docker` CLI exists and also that `docker info` works properly.
 
 ## v0.4.0
 
-* Added full `CGO` support when building Go application/library, `.goreleaser.yaml` file now has `C_INCLUDE_PATH` and `LIBRARY_PATH` sets correctly so it's possible to build Go that depends on C libraries.
+- Added full `CGO` support when building Go application/library, `.goreleaser.yaml` file now has `C_INCLUDE_PATH` and `LIBRARY_PATH` sets correctly so it's possible to build Go that depends on C libraries.
 
-* Added config/flag value `goreleaser-docker-image` so it's possible to override `goreleaser` Docker image used.
+- Added config/flag value `goreleaser-docker-image` so it's possible to override `goreleaser` Docker image used.
 
 ## v0.3.0
 
-* Added support for releasing Rust library project.
+- Added support for releasing Rust library project.
 
   This newly added support will publish Rust crates of a library. The crates to publish must be
   specified in the configuration file via the path `releaser.rust-crates` where the value is a list
   of crates name:
 
   ```yaml
-  global:
-    ...
+  global: ...
   release:
     rust-crates:
-    - crate1
-    - crate2
+      - crate1
+      - crate2
   ```
 
   Order is important as it will be respected when doing the commands. A GitHub release will be produced just

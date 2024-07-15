@@ -23,7 +23,7 @@ func promptVersion(changelogPath string, gitRemote string) string {
 	defaultVersion := readVersionFromChangelog(changelogPath)
 
 	zlog.Debug("asking for version via terminal", zap.String("default", defaultVersion), zap.String("changelog_path", changelogPath))
-	if defaultVersion == latestTag {
+	if defaultVersion == latestTag && latestTag != "" {
 		cli.Quit(cli.Dedent(`
 			Latest tag %q is the same as latest version extracted from your changelog, you can't
 			release the same version twice.
@@ -32,13 +32,13 @@ func promptVersion(changelogPath string, gitRemote string) string {
 
 	if defaultVersion == "" && latestTag != "" {
 		latestVersion, err := versioning.NewVersion(latestTag)
-		cli.NoError(err, "unable to parse latest tag %q", latestTag)
+		if err == nil {
+			latestSegments := latestVersion.Segments()
 
-		latestSegments := latestVersion.Segments()
-
-		// Version is always valid
-		nextVersion, _ := versioning.NewVersion(fmt.Sprintf("%d.%d.%d", latestSegments[0], latestSegments[1], latestSegments[2]+1))
-		defaultVersion = "v" + nextVersion.String()
+			// Version is always valid
+			nextVersion, _ := versioning.NewVersion(fmt.Sprintf("%d.%d.%d", latestSegments[0], latestSegments[1], latestSegments[2]+1))
+			defaultVersion = "v" + nextVersion.String()
+		}
 	}
 
 	opts := []cli.PromptOption{
@@ -49,8 +49,13 @@ func promptVersion(changelogPath string, gitRemote string) string {
 		opts = append(opts, cli.WithPromptDefaultValue(defaultVersion))
 	}
 
+	currentLatestTag := latestTag
+	if currentLatestTag == "" {
+		currentLatestTag = "'Never released yet'"
+	}
+
 	return cli.Prompt(
-		fmt.Sprintf("What version do you want to release (current latest tag is %s)", latestTag),
+		fmt.Sprintf("What version do you want to release (current latest tag is %s)", currentLatestTag),
 		cli.PromptTypeString,
 		opts...,
 	)

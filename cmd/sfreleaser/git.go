@@ -100,7 +100,7 @@ func latestTag(remote string) (latestTag string) {
 
 	lines := getLines(output)
 	if len(lines) == 0 {
-		return "'Never released yet'"
+		return ""
 	}
 
 	lastLine := lines[len(lines)-1]
