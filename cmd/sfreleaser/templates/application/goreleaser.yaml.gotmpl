@@ -1,3 +1,5 @@
+version: 2
+
 env_files:
   github_token: ~/.config/goreleaser/github_token
 
@@ -124,7 +126,7 @@ brews:
   - name: {{ .global.Project }}
     ids:
     - {{ .global.Project }}
-    tap:
+    repository:
       owner: {{ .global.Owner }}
       name: {{ .release.Brew.TapRepo }}
     commit_author:
