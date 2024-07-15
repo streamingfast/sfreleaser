@@ -5,7 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## v0.8.0
+
+- Ensure `sfreleaser` works with Goreleaser 2.x
+
+  > [!IMPORTANT]
+  > You will need to use an up to date version of `goreleaser/goreleaser-cross:v1.22` or later for `sfreleaser` to work properly.
 
 - Fixed wrong error when a project was never release.
 
