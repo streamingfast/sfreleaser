@@ -29,6 +29,30 @@ func doctor(cmd *cobra.Command, _ []string) error {
 		Here a list of known issues and possible solutions:
 
 		##
+		### X release failed after 0s error=only configurations files on  version: 1  are supported, yours is  version: 2 , please update your configuration
+		##
+
+		This happens when you are using a newer 'sfreleaser' version (>= v0.8.0) but that the Docker image 'goreleaser/goreleaser-cross' used for the
+		building is too old. Indeed, newer versions of 'goreleaser-cross' uses Goreleaser version > 2.0 which brings a bunch of breaking changes.
+
+		The 'sfreleaser' tool only works with Goreleaser version >= 2.0.0. First check the project's '.sfreleaser', if there is
+
+			release:
+  				goreleaser-docker-image: <something>
+
+		Ensure the image is based on latest 'goreleaser-cross:1.22' or later. If you were using a custom image,
+		update it the base to use 'goreleaser/goreleaser-cross:1.22' or later.
+
+		If you are not using a custom image and still have the problem, you might need to re-pull the
+		image, it assume you have it because we do not specify the patch version, only the major and minor.
+		This can be done with the following command:
+
+			docker pull --platform=linux/arm64 goreleaser/goreleaser-cross:1.22
+
+		> **Note**
+		> Change --platform=linux/arm64 to your platform if you are not on ARM64.
+
+		##
 		### Unable to copy command PTY to stdout: read /dev/ptmx: input/output error
 		##
 

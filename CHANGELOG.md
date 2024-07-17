@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ensure `sfreleaser` works with Goreleaser 2.x
 
   > [!IMPORTANT]
-  > You will need to use an up to date version of `goreleaser/goreleaser-cross:v1.22` or later for `sfreleaser` to work properly.
+  > You will need to use an up to date version of `goreleaser/goreleaser-cross:v1.22` or later for `sfreleaser` to work properly. If you have an error of the form `⨯ release failed after 0s error=only configurations files on  version: 1  are supported, yours is  version: 2 , please update your configuration`, update your image to latest version using `docker pull --platform linux/arm64 goreleaser/goreleaser-cross:v1.22` and ensure you `.sfreleaser` does use it properly.
 
 - Fixed wrong error when a project was never release.
 
