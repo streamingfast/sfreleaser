@@ -11,9 +11,10 @@ main() {
   # Update manually from time to time so that development version compiled
   # from this script have the version embedded which prevents problem when
   # running the version checker that has no idea what to do with 'dev' version.
-  version="v0.7.1"
   if [[ "$SFRELEASER_DEV_VERSION" != "" ]]; then
     version="$SFRELEASER_DEV_VERSION"
+  else
+    version="`git describe --tags --abbrev=0`"
   fi
 
   pushd "$ROOT" &> /dev/null
