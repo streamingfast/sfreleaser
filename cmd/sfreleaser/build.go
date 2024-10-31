@@ -25,7 +25,7 @@ var BuildCmd = Command(nil,
 		How the build is performed and what build artifacts are produced depends on the choosen
 		language and variant.
 
-		Refer to 'sfrealeaser releaser --help' for more information on the available options.
+		Refer to 'sfreleaser releaser --help' for more information on the available options.
 	`),
 	ExamplePrefixed("sfreleaser build", `
 		# Build for the current platform when no argument
