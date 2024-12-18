@@ -127,8 +127,8 @@ brews:
     ids:
     - {{ .global.Project }}
     repository:
-      owner: {{ .global.Owner }}
-      name: {{ .release.Brew.TapRepo }}
+      owner: {{ .release.Brew.TapRepoOwner }}
+      name: {{ .release.Brew.TapRepoName }}
     commit_author:
       name: goreleaser
     homepage: "https://github.com/{{ .global.Owner }}/{{ .global.Project }}"

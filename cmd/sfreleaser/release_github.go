@@ -85,7 +85,7 @@ func goreleaseDockerCommand(global *GlobalModel, githubRelease *GitHubReleaseMod
 	}...)
 
 	if githubRelease.AllowDirty {
-		arguments = append(arguments, "--skip-validate")
+		arguments = append(arguments, "--skip=validate")
 	}
 
 	arguments = append(arguments, goReleaserExtraArguments...)

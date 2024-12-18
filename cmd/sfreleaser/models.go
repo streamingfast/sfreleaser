@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -156,6 +157,8 @@ type ReleaseModel struct {
 	Rust *RustReleaseModel
 }
 
+var tapRepoOwnerPrefix = regexp.MustCompile(`^[^/]+/`)
+
 func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 	m.ReadmeRelativePath = findFile(global.WorkingDirectory, orMatcher(
 		caseInsensitiveMatcher("README.md"),
@@ -167,9 +170,20 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 		caseInsensitiveMatcher("LICENSE"),
 	))
 
+	tapRepo := sflags.MustGetString(cmd, "brew-tap-repo")
+
+	tapRepoOwner := global.Owner
+	tapRepoName := tapRepo
+
+	if tapRepoOwnerPrefix.MatchString(tapRepo) {
+		tapRepoOwner = strings.TrimSuffix(tapRepoOwnerPrefix.FindString(tapRepo), "/")
+		tapRepoName = strings.TrimPrefix(tapRepo, tapRepoOwner+"/")
+	}
+
 	m.Brew = &BrewReleaseModel{
-		Disabled: sflags.MustGetBool(cmd, "brew-disabled"),
-		TapRepo:  sflags.MustGetString(cmd, "brew-tap-repo"),
+		Disabled:     sflags.MustGetBool(cmd, "brew-disabled"),
+		TapRepoOwner: tapRepoOwner,
+		TapRepoName:  tapRepoName,
 	}
 
 	switch global.Language {
@@ -232,6 +246,7 @@ type GitHubReleaseModel struct {
 }
 
 type BrewReleaseModel struct {
-	Disabled bool
-	TapRepo  string
+	Disabled     bool
+	TapRepoOwner string
+	TapRepoName  string
 }

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.9.1
+
+- Fixed `--allow-dirty` not working with latest `goreleaser` version that we use by default.
+
+- Fixed `brew-tap-repo` to properly handle the format `<owner>/<name>` as well as just `<name>` in which case owner is the global value.
+
 ## v0.9.0
 
 - Bumped to `Golang` `1.23`, this will pull `goreleaser/goreleaser-cross:v1.23` so expect some delays before your build starts.
