@@ -53,6 +53,14 @@ func doctor(cmd *cobra.Command, _ []string) error {
 		> Change --platform=linux/arm64 to your platform if you are not on ARM64.
 
 		##
+		### scm releases: failed to publish artifacts: could not release: POST https://api.github.com/repos/streamingfast/substreams-ethereum/releases: 422 Validation Failed [{Resource:Release Field:target_commitish Code:invalid Message:}]
+		##
+
+		This happens when you are trying to release a commit that does not exists in the repository, try pushing the commit first.
+
+		If this doesn't work, check if GitHub is having issues with their API, you can check their status at https://www.githubstatus.com/.
+
+		##
 		### Unable to copy command PTY to stdout: read /dev/ptmx: input/output error
 		##
 
