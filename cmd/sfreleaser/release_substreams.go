@@ -44,7 +44,7 @@ func publishSubstreamsPackageArgs(registryURL string, teamSlug string) []string 
 		args = append(args, "--registry-url", registryURL)
 	}
 	if teamSlug != "" {
-		args = append(args, "--teamSlug", teamSlug)
+		args = append(args, "--team-slug", teamSlug)
 	}
 
 	return args

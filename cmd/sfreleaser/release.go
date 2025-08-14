@@ -78,7 +78,7 @@ var ReleaseCmd = Command(release,
 
 		// Substreams Flags
 		flags.String("substreams-registry-url", "", "[Substreams only] The registry URL to publish the package to (defaults to official registry if not specified)")
-		flags.String("substreams-publish-team-slug", "", "[Substreams only] Team slug to use for publication; passed as --teamSlug to 'substreams registry publish'")
+		flags.String("substreams-publish-team-slug", "", "[Substreams only] Team slug to use for publication; passed as --team-slug to 'substreams registry publish'")
 
 		// Deprecated Flags
 		flags.String("upload-substreams-spkg", "", "If provided, add this Substreams package file to the release, if manifest is a 'substreams.yaml' file, the package is first built")
