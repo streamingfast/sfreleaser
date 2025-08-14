@@ -16,6 +16,9 @@ var goreleaserAppTmpl []byte
 //go:embed templates/library/goreleaser.yaml.gotmpl
 var goreleaserLibTmpl []byte
 
+//go:embed templates/substreams/goreleaser.yaml.gotmpl
+var goreleaserSubstreamsTmpl []byte
+
 //go:embed templates/CHANGELOG.md.gotmpl
 var changelogTmpl []byte
 
@@ -24,6 +27,9 @@ var sfreleaserGolangYamlTmpl []byte
 
 //go:embed templates/sfreleaser-rust.yaml.gotmpl
 var sfreleaserRustYamlTmpl []byte
+
+//go:embed templates/sfreleaser-substreams.yaml.gotmpl
+var sfreleaserSubstreamsYamlTmpl []byte
 
 func getInstallTemplateModel(global *GlobalModel) map[string]any {
 	return map[string]any{
@@ -39,9 +45,14 @@ func getReleaseTemplateModel(global *GlobalModel, release *ReleaseModel) map[str
 }
 
 func renderGoreleaserFile(global *GlobalModel, release *ReleaseModel, github *GitHubReleaseModel) {
-	goreleaserTemplate := goreleaserAppTmpl
-	if global.Variant == VariantLibrary {
+	var goreleaserTemplate []byte
+	switch global.Variant {
+	case VariantLibrary:
 		goreleaserTemplate = goreleaserLibTmpl
+	case VariantSubstreams:
+		goreleaserTemplate = goreleaserSubstreamsTmpl
+	default:
+		goreleaserTemplate = goreleaserAppTmpl
 	}
 
 	renderTemplate(github.GoreleaserConfigPath, true, goreleaserTemplate, getReleaseTemplateModel(global, release))

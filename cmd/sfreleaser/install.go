@@ -53,8 +53,12 @@ func install(cmd *cobra.Command, _ []string) error {
 		sfreleaserYamlTmpl = sfreleaserGolangYamlTmpl
 
 	case LanguageRust:
-		model = addRustModel(model)
-		sfreleaserYamlTmpl = sfreleaserRustYamlTmpl
+		if global.Variant == VariantSubstreams {
+			sfreleaserYamlTmpl = sfreleaserSubstreamsYamlTmpl
+		} else {
+			model = addRustModel(model)
+			sfreleaserYamlTmpl = sfreleaserRustYamlTmpl
+		}
 
 	default:
 		cli.Quit("unhandled language %q", global.Language)

@@ -149,9 +149,23 @@ func build(cmd *cobra.Command, args []string) error {
 		GoreleaserImageID:    goreleaserDockerImage,
 	}
 
+	if global.Language == LanguageRust && global.Variant == VariantSubstreams {
+		fmt.Println()
+		fmt.Println("Building Substreams package (.spkg)")
+		buildSubstreamsPackage(global)
+	}
+
 	fmt.Println()
 	fmt.Printf("Building artifacts using image %q\n", goreleaserDockerImage)
 	buildArtifacts(global, build, gitHubRelease)
 
 	return nil
+}
+
+func buildSubstreamsPackage(_ *GlobalModel) {
+	// Run substreams build to generate the .spkg file
+	fmt.Println("Running 'substreams build' to generate .spkg file...")
+	run("substreams", "build")
+	
+	fmt.Println("✓ Substreams package (.spkg) built successfully")
 }

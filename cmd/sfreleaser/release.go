@@ -76,6 +76,10 @@ var ReleaseCmd = Command(release,
 		flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish' when publishing, the tool might provide some default on its own, Bash rules are used to split the arguments from the string")
 		flags.StringArray("rust-crates", nil, "[Rust only] The list of crates we should publish, the project is expected to be a workspace if this is used")
 
+		// Substreams Flags
+		flags.String("substreams-registry-url", "", "[Substreams only] The registry URL to publish the package to (defaults to official registry if not specified)")
+		flags.String("substreams-publish-team-slug", "", "[Substreams only] Team slug to use for publication; passed as --teamSlug to 'substreams registry publish'")
+
 		// Deprecated Flags
 		flags.String("upload-substreams-spkg", "", "If provided, add this Substreams package file to the release, if manifest is a 'substreams.yaml' file, the package is first built")
 		flags.Lookup("upload-substreams-spkg").Deprecated = "use a --pre-build-hooks to build your '.spkg' and --upload-extra-assets to upload it, see command long description for more details"
@@ -199,6 +203,13 @@ func release(cmd *cobra.Command, args []string) error {
 		executeHooks(preBuildHooks, buildDirectory, global, release)
 	}
 
+	// Ensure Substreams package (.spkg) is built when releasing Substreams variant
+	if global.Language == LanguageRust && global.Variant == VariantSubstreams {
+		fmt.Println()
+		fmt.Println("Building Substreams package (.spkg)")
+		buildSubstreamsPackage(global)
+	}
+
 	if len(uploadExtraAssets) > 0 {
 		fmt.Println()
 		fmt.Printf("Uploading %d extra asset(s)\n", len(uploadExtraAssets))
@@ -271,8 +282,13 @@ func release(cmd *cobra.Command, args []string) error {
 		if yes, _ := cli.PromptConfirm("Publish release right now?"); yes {
 			publishReleaseNow(global, release)
 		} else {
-			if global.Language == LanguageRust && global.Variant == VariantLibrary {
-				printRustCratesNotPublishedMessage(release.Rust)
+			if global.Language == LanguageRust {
+				switch global.Variant {
+				case VariantSubstreams:
+					printSubstreamsRegistryNotPublishedMessage(release.Substreams)
+				case VariantLibrary:
+					printRustCratesNotPublishedMessage(release.Rust)
+				}
 			}
 		}
 

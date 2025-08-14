@@ -18,16 +18,19 @@ const (
 	VariantApplication
 	// VariantLibrary is a Variant of type Library.
 	VariantLibrary
+	// VariantSubstreams is a Variant of type Substreams.
+	VariantSubstreams
 )
 
 var ErrInvalidVariant = fmt.Errorf("not a valid Variant, try [%s]", strings.Join(_VariantNames, ", "))
 
-const _VariantName = "UnsetApplicationLibrary"
+const _VariantName = "UnsetApplicationLibrarySubstreams"
 
 var _VariantNames = []string{
 	_VariantName[0:5],
 	_VariantName[5:16],
 	_VariantName[16:23],
+	_VariantName[23:33],
 }
 
 // VariantNames returns a list of possible string values of Variant.
@@ -41,6 +44,7 @@ var _VariantMap = map[Variant]string{
 	VariantUnset:       _VariantName[0:5],
 	VariantApplication: _VariantName[5:16],
 	VariantLibrary:     _VariantName[16:23],
+	VariantSubstreams:  _VariantName[23:33],
 }
 
 // String implements the Stringer interface.
@@ -65,6 +69,8 @@ var _VariantValue = map[string]Variant{
 	strings.ToLower(_VariantName[5:16]):  VariantApplication,
 	_VariantName[16:23]:                  VariantLibrary,
 	strings.ToLower(_VariantName[16:23]): VariantLibrary,
+	_VariantName[23:33]:                  VariantSubstreams,
+	strings.ToLower(_VariantName[23:33]): VariantSubstreams,
 }
 
 // ParseVariant attempts to convert a string to a Variant.

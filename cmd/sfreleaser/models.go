@@ -100,8 +100,8 @@ func (g *GlobalModel) ResolveFile(in string) string {
 func (g *GlobalModel) ensureValidForBuild() {
 	g.ensureValidForRelease()
 
-	if g.Language != LanguageGolang {
-		cli.Quit(`'sfreleaser build' only works for Go projects at the moment, sorry!`)
+	if g.Language != LanguageGolang && !(g.Language == LanguageRust && g.Variant == VariantSubstreams) {
+		cli.Quit(`'sfreleaser build' only works for Go projects and Rust substreams projects at the moment, sorry!`)
 	}
 }
 
@@ -155,6 +155,9 @@ type ReleaseModel struct {
 
 	// Rust is populated only if config if of type Rust
 	Rust *RustReleaseModel
+
+	// Substreams is populated only if variant is Substreams
+	Substreams *SubstreamsReleaseModel
 }
 
 var tapRepoOwnerPrefix = regexp.MustCompile(`^[^/]+/`)
@@ -191,10 +194,15 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 		// Nothing
 
 	case LanguageRust:
-		m.Rust = &RustReleaseModel{}
-
-		m.Rust.CargoPublishArgs = unquotedFlatten(sflags.MustGetString(cmd, "rust-cargo-publish-args"))
-		m.Rust.Crates = sflags.MustGetStringArray(cmd, "rust-crates")
+		if global.Variant == VariantSubstreams {
+			m.Substreams = &SubstreamsReleaseModel{}
+			m.Substreams.RegistryURL = sflags.MustGetString(cmd, "substreams-registry-url")
+			m.Substreams.TeamSlug = sflags.MustGetString(cmd, "substreams-publish-team-slug")
+		} else {
+			m.Rust = &RustReleaseModel{}
+			m.Rust.CargoPublishArgs = unquotedFlatten(sflags.MustGetString(cmd, "rust-cargo-publish-args"))
+			m.Rust.Crates = sflags.MustGetStringArray(cmd, "rust-crates")
+		}
 
 	default:
 		cli.Quit("unhandled language %q", global.Language)
@@ -235,6 +243,11 @@ func caseInsensitiveMatcher(in string) func(string) bool {
 type RustReleaseModel struct {
 	CargoPublishArgs []string
 	Crates           []string
+}
+
+type SubstreamsReleaseModel struct {
+	RegistryURL string
+	TeamSlug    string
 }
 
 type GitHubReleaseModel struct {

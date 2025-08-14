@@ -9,11 +9,20 @@ import (
 )
 
 func buildArtifacts(global *GlobalModel, build *BuildModel, githubRelease *GitHubReleaseModel) {
-	renderGoreleaserFile(global, &ReleaseModel{
+	releaseModel := &ReleaseModel{
 		Version: build.Version,
 		Brew:    &BrewReleaseModel{Disabled: true},
-		Rust:    &RustReleaseModel{},
-	}, githubRelease)
+	}
+	
+	if global.Language == LanguageRust {
+		if global.Variant == VariantSubstreams {
+			releaseModel.Substreams = &SubstreamsReleaseModel{}
+		} else {
+			releaseModel.Rust = &RustReleaseModel{}
+		}
+	}
+	
+	renderGoreleaserFile(global, releaseModel, githubRelease)
 
 	var goreleaserArguments []string
 	if build.All {

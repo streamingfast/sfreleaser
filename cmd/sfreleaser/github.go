@@ -128,8 +128,14 @@ func deleteExistingRelease(version string) {
 
 func publishReleaseNow(global *GlobalModel, release *ReleaseModel) {
 	if global.Language == LanguageRust {
-		fmt.Println("Publishing Rust crates")
-		releaseRustPublishCrates(release.Rust)
+		switch global.Variant {
+		case VariantSubstreams:
+			fmt.Println("Publishing Substreams package to registry")
+			releaseSubstreamsPublishPackage(release.Substreams)
+		default:
+			fmt.Println("Publishing Rust crates")
+			releaseRustPublishCrates(release.Rust)
+		}
 	}
 
 	version := release.Version

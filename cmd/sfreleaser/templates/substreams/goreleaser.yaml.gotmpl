@@ -1,0 +1,26 @@
+version: 2
+
+project_name: {{ .global.Project }}
+
+release:
+  draft: true
+  replace_existing_draft: true
+  name_template: '{{`{{.Tag}}`}}'
+  target_commitish: '{{`{{ .Commit }}`}}'
+  github:
+    owner: {{ .global.Owner }}
+    name: {{ .global.Project }}
+  extra_files:
+  - glob: "*.spkg"
+
+builds:
+- skip: true
+
+archives:
+- format: binary
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{`{{ incpatch .Version }}`}}-next"

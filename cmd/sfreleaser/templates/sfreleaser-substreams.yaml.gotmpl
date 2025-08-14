@@ -1,0 +1,5 @@
+global:
+  language: {{ .global.Language | lower }}
+  variant: {{ .global.Variant | lower }}
+# Substreams projects don't need rust-crates configuration
+# They use a different publishing mechanism via the Substreams registry
