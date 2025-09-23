@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -162,10 +163,41 @@ func build(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func buildSubstreamsPackage(_ *GlobalModel) {
+func buildSubstreamsPackage(global *GlobalModel) {
 	// Run substreams build to generate the .spkg file
 	fmt.Println("Running 'substreams build' to generate .spkg file...")
 	run("substreams", "build")
-	
+
 	fmt.Println("✓ Substreams package (.spkg) built successfully")
+}
+
+func selectSubstreamsPackageForRelease(version string) (string, error) {
+	// List all .spkg files in current directory
+	spkgFiles, err := filepath.Glob("*.spkg")
+	if err != nil {
+		return "", fmt.Errorf("failed to list .spkg files: %w", err)
+	}
+
+	if len(spkgFiles) == 0 {
+		return "", fmt.Errorf("no .spkg files found in current directory")
+	}
+
+	// Try to match by version
+	var matchedFiles []string
+	for _, file := range spkgFiles {
+		if strings.Contains(file, version) {
+			matchedFiles = append(matchedFiles, file)
+		}
+	}
+
+	if len(matchedFiles) == 1 {
+		fmt.Printf("Found .spkg file matching version %s: %s\n", version, matchedFiles[0])
+		return matchedFiles[0], nil
+	}
+
+	if len(matchedFiles) == 0 {
+		return "", fmt.Errorf("no .spkg files match version %s, available files: %v", version, spkgFiles)
+	}
+
+	return "", fmt.Errorf("multiple .spkg files match version %s, cannot determine which to use: %v", version, matchedFiles)
 }

@@ -21,9 +21,9 @@ import (
 var version = "dev"
 
 var (
-	devSkipGoreleaser                 = os.Getenv("SFRELEASER_DEV_SKIP_GORELEASER") == "true"
-	devSkipRustCargoPublish           = os.Getenv("SFRELEASER_DEV_SKIP_RUST_CARGO_PUBLISH") == "true"
-	devSkipSubstreamsRegistryPublish  = os.Getenv("SFRELEASER_DEV_SKIP_SUBSTREAMS_REGISTRY_PUBLISH") == "true"
+	devSkipGoreleaser                = os.Getenv("SFRELEASER_DEV_SKIP_GORELEASER") == "true"
+	devSkipRustCargoPublish          = os.Getenv("SFRELEASER_DEV_SKIP_RUST_CARGO_PUBLISH") == "true"
+	devSkipSubstreamsRegistryPublish = os.Getenv("SFRELEASER_DEV_SKIP_SUBSTREAMS_REGISTRY_PUBLISH") == "true"
 )
 
 var (
@@ -44,6 +44,10 @@ func main() {
 		BuildCmd,
 		ReleaseCmd,
 		InstallCmd,
+
+		Group("changelog", "Commands to manipulate changelog files",
+			ChangelogExtractSectionCmd,
+		),
 
 		Description(`
 			**Important** This tool is meant for StreamingFast usage and is not a generic release tool. If
