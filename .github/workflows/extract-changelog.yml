@@ -1,0 +1,43 @@
+name: Extract Changelog
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  extract-changelog:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Extract changelog section
+      id: changelog
+      run: |
+        set -e
+
+        # Download CHANGELOG.md locally (from current repository)
+        curl -s -H "Authorization: token ${{ github.token }}" \
+          -H "Accept: application/vnd.github.v3.raw" \
+          "https://api.github.com/repos/${{ github.repository }}/contents/CHANGELOG.md?ref=$GITHUB_SHA" \
+          -o CHANGELOG.md
+
+        echo "Extracting changelog section..."
+        changelog_content=$(go run github.com/streamingfast/sfreleaser/cmd/sfreleaser@latest changelog extract-section CHANGELOG.md)
+
+        # Properly escape the content for GitHub Actions output
+        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        {
+          echo "changelog<<$EOF"
+          echo "$changelog_content"
+          echo "$EOF"
+        } >> "$GITHUB_OUTPUT"
+
+        echo "Changelog section extracted successfully"
+
+    - name: Test changelog output
+      run: |
+        echo "=== Extracted Changelog Content ==="
+        echo "${{ steps.changelog.outputs.changelog }}"
+        echo "=== End of Changelog Content ==="
