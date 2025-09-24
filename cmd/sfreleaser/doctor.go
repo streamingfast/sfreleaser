@@ -56,9 +56,19 @@ func doctor(cmd *cobra.Command, _ []string) error {
 		### scm releases: failed to publish artifacts: could not release: POST https://api.github.com/repos/streamingfast/substreams-ethereum/releases: 422 Validation Failed [{Resource:Release Field:target_commitish Code:invalid Message:}]
 		##
 
-		This happens when you are trying to release a commit that does not exists in the repository, try pushing the commit first.
+		It seems on fast build, there is race condition on GitHub side where the commit
+		does not exists yet when we try to create the release (at least it's not visible yet
+		to GitHub Releaser service).
 
-		If this doesn't work, check if GitHub is having issues with their API, you can check their status at https://www.githubstatus.com/.
+		Push manually the commit you want to release and re-run the command. Often, I simply
+		just re-run the command after the initial failure and it works right away.
+
+		If this doesn't work, check if GitHub is having issues with their API, you can check their
+		status at https://www.githubstatus.com/. Sometimes there is no downtime status but
+		GitHub is slow leading to the error repeating more often.
+
+		Wait a bit and retry later. If the issue persist, the is probably something bigger
+		going on.
 
 		##
 		### Unable to copy command PTY to stdout: read /dev/ptmx: input/output error
