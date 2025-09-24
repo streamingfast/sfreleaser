@@ -24,7 +24,7 @@ var ChangelogExtractSectionCmd = Command(changelogExtractSection,
 	Flags(func(flags *pflag.FlagSet) {
 		flags.String("start-header-regex", "", "Regex pattern to match section start headers (defaults to '^## .+' or '^## <version>' if version specified)")
 		flags.String("end-header-regex", "^## .+", "Regex pattern to match section end headers")
-		flags.String("github-output", "", "Path to GITHUB_OUTPUT file for GitHub Actions (when set, writes changelog as 'changelog' output variable)")
+		flags.String("github-output", "", "Path to GITHUB_OUTPUT file for GitHub Actions (format: 'path' or 'variable:path', defaults to 'changelog' variable)")
 	}),
 	Description(`
 		Extracts a specific section from a changelog file.
@@ -37,6 +37,12 @@ var ChangelogExtractSectionCmd = Command(changelogExtractSection,
 		- A local file path: "CHANGELOG.md"
 		- A GitHub URL: "github://[token:<token>@]<owner>/<repo>/[blob/]<sha>/<file_path>"
 		  Token is optional for public repositories. The "/blob/" part is optional.
+
+		GitHub Actions Output:
+		The --github-output flag writes the extracted changelog content to the GitHub Actions
+		output file in the proper format for use in workflows. It supports two formats:
+		- "path": Uses default variable name "changelog"
+		- "variable:path": Uses custom variable name
 	`),
 	ExamplePrefixed("sfreleaser changelog extract-section", `
 		# Extract latest section from default CHANGELOG.md
@@ -61,6 +67,15 @@ var ChangelogExtractSectionCmd = Command(changelogExtractSection,
 
 		# Extract using GitHub Actions variables
 		"github://token:$GITHUB_TOKEN@$GITHUB_REPOSITORY/$GITHUB_SHA/CHANGELOG.md"
+
+		# Write to GitHub Actions output with default 'changelog' variable name
+		--github-output="$GITHUB_OUTPUT" CHANGELOG.md
+
+		# Write to GitHub Actions output with custom variable name
+		--github-output="release_notes:$GITHUB_OUTPUT" CHANGELOG.md
+
+		# Complete GitHub Actions workflow example
+		--github-output="changelog:$GITHUB_OUTPUT" "github://token:${{ github.token }}@${{ github.repository }}/$GITHUB_SHA/CHANGELOG.md"
 	`),
 )
 
@@ -122,11 +137,20 @@ func changelogExtractSection(cmd *cobra.Command, args []string) error {
 
 	// Handle GitHub Actions output format
 	if githubOutputFile != "" {
-		err := writeGitHubOutput(githubOutputFile, "changelog", section)
+		variableName := "changelog" // default variable name
+		outputFile := githubOutputFile
+
+		// Check if the format is "variable:path"
+		if colonIndex := strings.Index(githubOutputFile, ":"); colonIndex != -1 {
+			variableName = githubOutputFile[:colonIndex]
+			outputFile = githubOutputFile[colonIndex+1:]
+		}
+
+		err := writeGitHubOutput(outputFile, variableName, section)
 		if err != nil {
 			return fmt.Errorf("failed to write GitHub output: %w", err)
 		}
-		fmt.Fprintf(os.Stderr, "Changelog section written to GitHub Actions output\n")
+		fmt.Fprintf(os.Stderr, "Changelog section written to GitHub Actions output as variable '%s'\n", variableName)
 	} else {
 		fmt.Print(section)
 	}
@@ -386,7 +410,7 @@ func writeGitHubOutput(outputFile, varName, content string) error {
 	}
 	defer file.Close()
 
-	// Write in the format: varname<<EOF\ncontent\nEOF
+	// Write in the format: variable<<EOF\ncontent\nEOF
 	_, err = fmt.Fprintf(file, "%s<<%s\n%s\n%s\n", varName, delimiter, content, delimiter)
 	if err != nil {
 		return fmt.Errorf("failed to write to GitHub output file: %w", err)
