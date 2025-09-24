@@ -17,13 +17,10 @@ jobs:
       run: |
         set -e
 
-        # Install sfreleaser using go install
-        echo "Installing sfreleaser..."
-        go install github.com/streamingfast/sfreleaser/cmd/sfreleaser@master
-        sfreleaser="$(go env GOPATH)/bin/sfreleaser"
+        brew install streamingfast/tap/sfreleaser
 
         echo "Extracting changelog section from GitHub..."
-        changelog_content=$($sfreleaser changelog extract-section github://token:${{ github.token }}@${{ github.repository }}/$GITHUB_SHA/CHANGELOG.md)
+        changelog_content=$(sfreleaser changelog extract-section github://token:${{ github.token }}@${{ github.repository }}/$GITHUB_SHA/CHANGELOG.md)
 
         # Properly escape the content for GitHub Actions output
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
