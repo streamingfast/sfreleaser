@@ -9,3 +9,6 @@ test passes and code is formatted properly.
 
 When running command in this project to test the `./cmd/sfreleaser` binary, always use `./devel/sfreleaser`
 script which is proxy to `./cmd/sfreleaser` but compiles it before running it.
+
+NEVER run the command `go build -o devel/sfreleaser ./cmd/sfreleaser`, this would overwrite our `devel/sfreleaser`
+script we use for development.

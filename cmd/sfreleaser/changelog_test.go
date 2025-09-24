@@ -144,3 +144,133 @@ func Test_extractChangelogSection_withCustomContent(t *testing.T) {
 		})
 	}
 }
+
+func Test_parseGitHubURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		urlStr  string
+		want    *GitHubURL
+		wantErr bool
+	}{
+		{
+			name:   "valid GitHub URL with token",
+			urlStr: "github://token:ghp_abc123@owner/repo/main/CHANGELOG.md",
+			want: &GitHubURL{
+				Token:      "ghp_abc123",
+				Repository: "owner/repo",
+				SHA:        "main",
+				FilePath:   "CHANGELOG.md",
+			},
+			wantErr: false,
+		},
+		{
+			name:   "valid GitHub URL without token (public repo)",
+			urlStr: "github://owner/repo/main/CHANGELOG.md",
+			want: &GitHubURL{
+				Token:      "",
+				Repository: "owner/repo",
+				SHA:        "main",
+				FilePath:   "CHANGELOG.md",
+			},
+			wantErr: false,
+		},
+		{
+			name:   "valid GitHub URL with subdirectory",
+			urlStr: "github://token:ghp_xyz789@streamingfast/sfreleaser/v1.2.3/docs/CHANGELOG.md",
+			want: &GitHubURL{
+				Token:      "ghp_xyz789",
+				Repository: "streamingfast/sfreleaser",
+				SHA:        "v1.2.3",
+				FilePath:   "docs/CHANGELOG.md",
+			},
+			wantErr: false,
+		},
+		{
+			name:   "valid GitHub URL with blob path",
+			urlStr: "github://owner/repo/blob/main/CHANGELOG.md",
+			want: &GitHubURL{
+				Token:      "",
+				Repository: "owner/repo",
+				SHA:        "main",
+				FilePath:   "CHANGELOG.md",
+			},
+			wantErr: false,
+		},
+		{
+			name:   "valid GitHub URL with blob path and token",
+			urlStr: "github://token:ghp_abc123@streamingfast/sfreleaser/blob/develop/docs/CHANGELOG.md",
+			want: &GitHubURL{
+				Token:      "ghp_abc123",
+				Repository: "streamingfast/sfreleaser",
+				SHA:        "develop",
+				FilePath:   "docs/CHANGELOG.md",
+			},
+			wantErr: false,
+		},
+		{
+			name:    "invalid scheme",
+			urlStr:  "https://token:ghp_abc123@owner/repo/main/CHANGELOG.md",
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:   "empty token (should be treated as no token)",
+			urlStr: "github://token:@owner/repo/main/CHANGELOG.md",
+			want: &GitHubURL{
+				Token:      "",
+				Repository: "owner/repo",
+				SHA:        "main",
+				FilePath:   "CHANGELOG.md",
+			},
+			wantErr: false,
+		},
+		{
+			name:    "invalid token format",
+			urlStr:  "github://user:pass@owner/repo/main/CHANGELOG.md",
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "missing repository",
+			urlStr:  "github://token:ghp_abc123@/main/CHANGELOG.md",
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "missing SHA",
+			urlStr:  "github://token:ghp_abc123@owner/repo//CHANGELOG.md",
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:   "missing file path",
+			urlStr: "github://token:ghp_abc123@owner/repo/main/",
+			want: &GitHubURL{
+				Token:      "ghp_abc123",
+				Repository: "owner/repo",
+				SHA:        "main",
+				FilePath:   "",
+			},
+			wantErr: true,
+		},
+		{
+			name:    "invalid URL",
+			urlStr:  "not-a-url",
+			want:    nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseGitHubURL(tt.urlStr)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Nil(t, got)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
