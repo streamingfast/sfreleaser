@@ -17,18 +17,11 @@ jobs:
       run: |
         set -e
 
-        brew install streamingfast/tap/sfreleaser
+        #curl -L https://github.com/streamingfast/sfreleaser/releases/download/v0.12.0/sfreleaser_linux_x86_64.tar.gz | tar -xz
+        #chmod +x sfreleaser
+        sfreleaser="go run github.com/streamingfast/sfreleaser/cmd/sfreleaser@master"
 
-        echo "Extracting changelog section from GitHub..."
-        changelog_content=$(sfreleaser changelog extract-section github://token:${{ github.token }}@${{ github.repository }}/$GITHUB_SHA/CHANGELOG.md)
-
-        # Properly escape the content for GitHub Actions output
-        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-        {
-          echo "changelog<<$EOF"
-          echo "$changelog_content"
-          echo "$EOF"
-        } >> "$GITHUB_OUTPUT"
+        $sfreleaser changelog extract-section --github-output="$GITHUB_OUTPUT" github://token:${{ github.token }}@${{ github.repository }}/$GITHUB_SHA/CHANGELOG.md
 
         echo "Changelog section extracted successfully"
 

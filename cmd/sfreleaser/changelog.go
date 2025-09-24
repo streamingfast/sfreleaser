@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,6 +24,7 @@ var ChangelogExtractSectionCmd = Command(changelogExtractSection,
 	Flags(func(flags *pflag.FlagSet) {
 		flags.String("start-header-regex", "", "Regex pattern to match section start headers (defaults to '^## .+' or '^## <version>' if version specified)")
 		flags.String("end-header-regex", "^## .+", "Regex pattern to match section end headers")
+		flags.String("github-output", "", "Path to GITHUB_OUTPUT file for GitHub Actions (when set, writes changelog as 'changelog' output variable)")
 	}),
 	Description(`
 		Extracts a specific section from a changelog file.
@@ -77,6 +80,7 @@ func changelogExtractSection(cmd *cobra.Command, args []string) error {
 	// Get flags
 	startHeaderRegex, _ := cmd.Flags().GetString("start-header-regex")
 	endHeaderRegex, _ := cmd.Flags().GetString("end-header-regex")
+	githubOutputFile, _ := cmd.Flags().GetString("github-output")
 
 	// Set default start header regex if not provided
 	if startHeaderRegex == "" {
@@ -116,7 +120,17 @@ func changelogExtractSection(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
-	fmt.Print(section)
+	// Handle GitHub Actions output format
+	if githubOutputFile != "" {
+		err := writeGitHubOutput(githubOutputFile, "changelog", section)
+		if err != nil {
+			return fmt.Errorf("failed to write GitHub output: %w", err)
+		}
+		fmt.Fprintf(os.Stderr, "Changelog section written to GitHub Actions output\n")
+	} else {
+		fmt.Print(section)
+	}
+
 	return nil
 }
 
@@ -355,4 +369,28 @@ func readReleaseNotesFromGitHub(ghURL *GitHubURL, startRegex, endRegex *regexp.R
 	}
 
 	return trimBlankLines(strings.Join(releaseNotes, "\n")), nil
+}
+
+// writeGitHubOutput writes a variable to the GitHub Actions output file using the proper format
+func writeGitHubOutput(outputFile, varName, content string) error {
+	// Generate a random delimiter (similar to GitHub Actions' own method)
+	randomBytes := make([]byte, 15)
+	if _, err := rand.Read(randomBytes); err != nil {
+		return fmt.Errorf("failed to generate random delimiter: %w", err)
+	}
+	delimiter := base64.StdEncoding.EncodeToString(randomBytes)
+
+	file, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open GitHub output file %q: %w", outputFile, err)
+	}
+	defer file.Close()
+
+	// Write in the format: varname<<EOF\ncontent\nEOF
+	_, err = fmt.Fprintf(file, "%s<<%s\n%s\n%s\n", varName, delimiter, content, delimiter)
+	if err != nil {
+		return fmt.Errorf("failed to write to GitHub output file: %w", err)
+	}
+
+	return nil
 }
