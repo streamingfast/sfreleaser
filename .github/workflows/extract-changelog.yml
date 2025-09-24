@@ -15,11 +15,10 @@ jobs:
     - name: Extract changelog section
       id: changelog
       run: |
-        #curl -L https://github.com/streamingfast/sfreleaser/releases/download/v0.12.0/sfreleaser_linux_x86_64.tar.gz | tar -xz
-        #chmod +x sfreleaser
-        sfreleaser="go run github.com/streamingfast/sfreleaser/cmd/sfreleaser@c2d4926ffcaf9a405ecf54cc476633944a573a92"
+        curl -L https://github.com/streamingfast/sfreleaser/releases/download/v0.12.1/sfreleaser_linux_x86_64.tar.gz | tar -xz
+        chmod +x sfreleaser
 
-        $sfreleaser changelog extract-section \
+        ./sfreleaser changelog extract-section \
           github://token:${{ github.token }}@${{ github.repository }}/$GITHUB_SHA/CHANGELOG.md \
           --github-output="$GITHUB_OUTPUT"
 
