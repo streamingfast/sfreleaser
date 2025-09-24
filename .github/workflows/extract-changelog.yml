@@ -1,11 +1,8 @@
 name: Extract Changelog
 
 on:
+  # Only dispatch for show case purposes
   workflow_dispatch:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
 
 jobs:
   extract-changelog:
