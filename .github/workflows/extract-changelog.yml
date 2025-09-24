@@ -19,7 +19,7 @@ jobs:
 
         #curl -L https://github.com/streamingfast/sfreleaser/releases/download/v0.12.0/sfreleaser_linux_x86_64.tar.gz | tar -xz
         #chmod +x sfreleaser
-        sfreleaser="go run github.com/streamingfast/sfreleaser/cmd/sfreleaser@master"
+        sfreleaser="go run github.com/streamingfast/sfreleaser/cmd/sfreleaser@c2d4926ffcaf9a405ecf54cc476633944a573a92"
 
         $sfreleaser changelog extract-section --github-output="$GITHUB_OUTPUT" github://token:${{ github.token }}@${{ github.repository }}/$GITHUB_SHA/CHANGELOG.md
 
