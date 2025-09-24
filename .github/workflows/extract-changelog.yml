@@ -20,7 +20,7 @@ jobs:
 
         ./sfreleaser changelog extract-section \
           github://token:${{ github.token }}@${{ github.repository }}/$GITHUB_SHA/CHANGELOG.md \
-          --github-output="$GITHUB_OUTPUT"
+          --github-output="changelog:$GITHUB_OUTPUT"
 
     - name: Test changelog output
       run: |
