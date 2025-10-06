@@ -13,7 +13,7 @@ func buildArtifacts(global *GlobalModel, build *BuildModel, githubRelease *GitHu
 		Version: build.Version,
 		Brew:    &BrewReleaseModel{Disabled: true},
 	}
-	
+
 	if global.Language == LanguageRust {
 		if global.Variant == VariantSubstreams {
 			releaseModel.Substreams = &SubstreamsReleaseModel{}
@@ -21,7 +21,7 @@ func buildArtifacts(global *GlobalModel, build *BuildModel, githubRelease *GitHu
 			releaseModel.Rust = &RustReleaseModel{}
 		}
 	}
-	
+
 	renderGoreleaserFile(global, releaseModel, githubRelease)
 
 	var goreleaserArguments []string

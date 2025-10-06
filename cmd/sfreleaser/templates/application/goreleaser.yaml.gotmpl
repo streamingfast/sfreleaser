@@ -4,6 +4,9 @@ env_files:
   github_token: ~/.config/goreleaser/github_token
 
 builds:
+{{- if .release.NoBinaries }}
+- skip: true
+{{- else }}
   - id: darwin-amd64
     main: ./cmd/{{ .global.Binary }}
     binary: {{ .global.Binary }}
@@ -79,8 +82,12 @@ builds:
       - -mod=readonly
     ldflags:
       - -s -w -X main.version={{`{{.Version}}`}}
+{{- end }}
 
 archives:
+{{- if .release.NoBinaries }}
+- format: binary
+{{- else }}
   - id: {{ .global.Project }}
     ids:
       - darwin-amd64
@@ -97,6 +104,7 @@ archives:
     files:
     {{ if .release.ReadmeRelativePath }}- {{ .release.ReadmeRelativePath }}{{ end }}
     {{ if .release.LicenseRelativePath }}- {{ .release.LicenseRelativePath }}{{ end }}
+{{- end }}
 
 checksum:
   name_template: 'checksums.txt'
@@ -121,7 +129,7 @@ release:
     owner: {{ .global.Owner }}
     name: {{ .global.Project }}
 
-{{- if not .release.Brew.Disabled }}
+{{- if and (not .release.Brew.Disabled) (not .release.NoBinaries) }}
 brews:
   - name: {{ .global.Project }}
     ids:

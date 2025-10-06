@@ -67,6 +67,7 @@ var ReleaseCmd = Command(release,
 		flags.StringArray("upload-extra-assets", nil, "If provided, add this extra asset file to the release, use a 'pre-build-hooks' to generate the file if needed")
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
 		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.24", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
+		flags.Bool("no-binaries", false, "Skip building binaries completely; useful for library-only releases or when binaries are built through other means (cannot be used with library variant)")
 
 		// Brew Flags
 		flags.Bool("brew-disabled", false, "[Brew only] Disable Brew tap release completely, only applies for 'Golang'/'Application' types")
@@ -149,6 +150,7 @@ func release(cmd *cobra.Command, args []string) error {
 	)
 
 	global.ensureValidForRelease()
+	release.ensureValidForRelease(global)
 
 	cli.NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
 

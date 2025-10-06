@@ -120,6 +120,18 @@ func (g *GlobalModel) ensureValidForRelease() {
 	}
 }
 
+func (m *ReleaseModel) ensureValidForRelease(global *GlobalModel) {
+	var errors []string
+
+	if m.NoBinaries && global.Variant == VariantLibrary {
+		errors = append(errors, `The "noBinaries" flag cannot be used with library variant as libraries already skip binary builds by default`)
+	}
+
+	if len(errors) != 0 {
+		cli.Quit(strings.Join(errors, "\n"))
+	}
+}
+
 type BuildModel struct {
 	Version string
 
@@ -151,6 +163,12 @@ type ReleaseModel struct {
 	// project (only root folder is explored, not recursive).
 	LicenseRelativePath *string
 
+	// NoBinaries when set to true will completely skip building binaries during release.
+	// This is useful for making releases without providing final binaries on the GitHub release,
+	// such as for library-only releases or when binaries are built through other means.
+	// Note: This flag cannot be used with library variant as libraries already skip binary builds.
+	NoBinaries bool
+
 	Brew *BrewReleaseModel
 
 	// Rust is populated only if config if of type Rust
@@ -172,6 +190,8 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 		caseInsensitiveMatcher("LICENSE.md"),
 		caseInsensitiveMatcher("LICENSE"),
 	))
+
+	m.NoBinaries = sflags.MustGetBool(cmd, "no-binaries")
 
 	tapRepo := sflags.MustGetString(cmd, "brew-tap-repo")
 
