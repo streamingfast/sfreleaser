@@ -43,6 +43,7 @@ func main() {
 		DoctorCmd,
 		BuildCmd,
 		ReleaseCmd,
+		InitCmd,
 		InstallCmd,
 
 		Group("changelog", "Commands to manipulate changelog files",

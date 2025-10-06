@@ -1,8 +1,13 @@
 global:
   language: {{ .global.Language | lower }}
   variant: {{ .global.Variant | lower }}
-{{- if .rust.Crates }}
+{{- if or .rust.Crates .noBinaries }}
 release:
+  {{- if .noBinaries }}
+  # For Rust application variant, binaries are not automatically built
+  no-binaries: true
+  {{- end }}
+  {{- if .rust.Crates }}
   # This is the list of Rust crates that are going to be 'cargo publish'.
   # **Important** Ordering must be strictly specified so that crates
   # are ordered by dependency order, a crate that depends on another
@@ -12,5 +17,6 @@ release:
   rust-crates:
   {{- range $crate := .rust.Crates }}
   - {{ $crate }}
+  {{- end }}
   {{- end }}
 {{- end }}

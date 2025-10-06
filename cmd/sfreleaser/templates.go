@@ -31,9 +31,10 @@ var sfreleaserRustYamlTmpl []byte
 //go:embed templates/sfreleaser-substreams.yaml.gotmpl
 var sfreleaserSubstreamsYamlTmpl []byte
 
-func getInstallTemplateModel(global *GlobalModel) map[string]any {
+func getInstallTemplateModel(global *GlobalModel, noBinaries bool) map[string]any {
 	return map[string]any{
-		"global": global,
+		"global":     global,
+		"noBinaries": noBinaries,
 	}
 }
 

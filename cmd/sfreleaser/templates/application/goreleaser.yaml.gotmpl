@@ -86,7 +86,7 @@ builds:
 
 archives:
 {{- if .release.NoBinaries }}
-- format: binary
+- formats: [binary]
 {{- else }}
   - id: {{ .global.Project }}
     ids:
@@ -100,7 +100,7 @@ archives:
       {{`{{- if eq .Arch "amd64" }}x86_64`}}
       {{`{{- else if eq .Arch "386" }}i386`}}
       {{`{{- else }}{{ tolower .Arch }}{{ end }}`}}
-    format: tar.gz
+    formats: [tar.gz]
     files:
     {{ if .release.ReadmeRelativePath }}- {{ .release.ReadmeRelativePath }}{{ end }}
     {{ if .release.LicenseRelativePath }}- {{ .release.LicenseRelativePath }}{{ end }}

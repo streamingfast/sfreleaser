@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- Renamed `sfreleaser install` to `sfreleaser init`; `install` command still works with deprecation warning.
+- Added support for Rust application variant during `init` with `no-binaries: true` automatically set.
+- Fixed deprecated `archives.format` usage by switching to `archives.formats` (list format).
+
 ## v0.12.2
 
 - Added `release.no-binaries` config option to skip binary builds when releasing application variants (useful when binaries are built through other means; cannot be used with library variant).

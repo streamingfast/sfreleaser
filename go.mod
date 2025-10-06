@@ -1,6 +1,8 @@
 module github.com/streamingfast/sfreleaser
 
-go 1.22
+go 1.24
+
+toolchain go1.24.2
 
 require (
 	github.com/bobg/go-generics/v2 v2.1.1
@@ -11,7 +13,7 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
-	github.com/streamingfast/cli v0.0.4-0.20241204195552-16b367a5935e
+	github.com/streamingfast/cli v0.0.4-0.20250815192146-d8a233ec3d0b
 	github.com/streamingfast/logging v0.0.0-20230608130331-f22c91403091
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.21.0

@@ -14,19 +14,33 @@ import (
 	"go.uber.org/zap"
 )
 
-var InstallCmd = Command(install,
-	"install",
-	"Install the necessary files configuration files",
+var InitCmd = Command(initCmd,
+	"init",
+	"Initialize the necessary configuration files",
 	Flags(func(flags *pflag.FlagSet) {
 		flags.BoolP("overwrite", "f", false, "[Destructive] Overwrite configuration files that already exists")
 	}),
 )
 
-func install(cmd *cobra.Command, _ []string) error {
+var InstallCmd = Command(installCmd,
+	"install",
+	"Initialize the necessary configuration files (deprecated: use 'init' instead)",
+	Flags(func(flags *pflag.FlagSet) {
+		flags.BoolP("overwrite", "f", false, "[Destructive] Overwrite configuration files that already exists")
+	}),
+)
+
+func installCmd(cmd *cobra.Command, args []string) error {
+	fmt.Println("WARNING: 'sfreleaser install' is deprecated, please use 'sfreleaser init' instead")
+	fmt.Println()
+	return initCmd(cmd, args)
+}
+
+func initCmd(cmd *cobra.Command, _ []string) error {
 	global := mustGetGlobal(cmd)
 	overwrite := sflags.MustGetBool(cmd, "overwrite")
 
-	zlog.Debug("starting 'sfreleaser install'",
+	zlog.Debug("starting 'sfreleaser init'",
 		zap.Inline(global),
 		zap.Bool("overwrite", overwrite),
 	)
@@ -39,13 +53,23 @@ func install(cmd *cobra.Command, _ []string) error {
 		global.Variant = promptVariant()
 	}
 
+	var noBinaries bool
 	if global.Language == LanguageRust && global.Variant == VariantApplication {
-		cli.Quit("Application variant for language Rust is currently not supported")
+		yes, _ := cli.PromptConfirm(dedent(`
+			Application variant for language Rust works but without support for automatic
+			binaries building and inclusion in the release.
+
+			Do you want to continue?
+		`))
+		if !yes {
+			return fmt.Errorf("operation cancelled by user")
+		}
+		noBinaries = true
 	}
 
 	cli.NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
 
-	model := getInstallTemplateModel(global)
+	model := getInstallTemplateModel(global, noBinaries)
 
 	var sfreleaserYamlTmpl []byte
 	switch global.Language {
@@ -56,7 +80,11 @@ func install(cmd *cobra.Command, _ []string) error {
 		if global.Variant == VariantSubstreams {
 			sfreleaserYamlTmpl = sfreleaserSubstreamsYamlTmpl
 		} else {
-			model = addRustModel(model)
+			// For Rust library variant, add crate model
+			// For Rust application variant with noBinaries, we just use the rust template without crates
+			if global.Variant == VariantLibrary {
+				model = addRustModel(model)
+			}
 			sfreleaserYamlTmpl = sfreleaserRustYamlTmpl
 		}
 
@@ -73,7 +101,7 @@ func install(cmd *cobra.Command, _ []string) error {
 	}
 
 	fmt.Println()
-	fmt.Println("Install completed")
+	fmt.Println("Initialization completed")
 	return nil
 }
 
