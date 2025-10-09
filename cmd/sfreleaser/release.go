@@ -157,13 +157,13 @@ func release(cmd *cobra.Command, args []string) error {
 	verifyTools()
 
 	if release.Version == "" {
-		release.Version = promptVersion(changelogPath, global.GitRemote)
+		release.Version = promptVersion(changelogPath, resolveGitRemote(global))
 	}
 
 	// For simplicity in the code below
 	version := release.Version
 
-	ensureGitHubReleaseValid(version)
+	ensureGitHubReleaseValid(global, version)
 
 	delay := 3 * time.Second
 	fmt.Printf("Releasing %q (Draft: %t, Publish Now: %t) in %s...\n", version, !publishNow, publishNow, delay)
@@ -177,7 +177,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 	cli.NoError(os.MkdirAll(buildDirectory, os.ModePerm), "Unable to create build directory")
 	configureGitHubTokenEnvFile(envFilePath)
-	cli.WriteFile(releaseNotesPath, readReleaseNotes(changelogPath))
+	cli.WriteFile(releaseNotesPath, "%s", readReleaseNotes(changelogPath))
 
 	// By doing this after creating the build directory and release notes, we ensure
 	// that those are ignored, the user will need to ignore them to process (or --allow-dirty).
@@ -248,10 +248,10 @@ func release(cmd *cobra.Command, args []string) error {
 
 	for _, extraAsset := range uploadExtraAssets {
 		fmt.Printf("Uploading asset file %q to release\n", filepath.Base(extraAsset))
-		run("gh release upload", version, "'"+extraAsset+"'")
+		run("gh release upload", version, "--repo", global.Owner+"/"+global.Project, "'"+extraAsset+"'")
 	}
 
-	releaseURL := releaseURL(version)
+	releaseURL := releaseURL(global, version)
 
 	if publishNow {
 		publishReleaseNow(global, release)

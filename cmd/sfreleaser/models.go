@@ -59,10 +59,60 @@ func (g *GlobalModel) MarshalLogObject(encoder zapcore.ObjectEncoder) error {
 	return nil
 }
 
+// parseRepository parses a repository string in various formats and returns owner and project.
+// Accepted formats:
+//   - owner/project
+//   - github.com/owner/project
+//   - https://github.com/owner/project
+//   - https://github.com/owner/project.git
+func parseRepository(repository string) (owner, project string) {
+	// Remove common prefixes
+	repository = strings.TrimPrefix(repository, "https://github.com/")
+	repository = strings.TrimPrefix(repository, "http://github.com/")
+	repository = strings.TrimPrefix(repository, "github.com/")
+
+	// Remove .git suffix if present
+	repository = strings.TrimSuffix(repository, ".git")
+
+	// Split by / to get owner and project
+	parts := strings.Split(repository, "/")
+
+	if len(parts) < 2 {
+		cli.Quit("Invalid repository format %q, expected format: <owner>/<project> (e.g., streamingfast/firehose-core)", repository)
+	}
+
+	if len(parts) > 2 {
+		cli.Quit("Invalid repository format %q, expected format: <owner>/<project>, got too many path segments", repository)
+	}
+
+	owner = strings.TrimSpace(parts[0])
+	project = strings.TrimSpace(parts[1])
+
+	if owner == "" || project == "" {
+		cli.Quit("Invalid repository format %q, both owner and project must be non-empty", repository)
+	}
+
+	return owner, project
+}
+
 func mustGetGlobal(cmd *cobra.Command) *GlobalModel {
+	// Check for conflicting flags
+	repository, repositoryProvided := sflags.MustGetStringProvided(cmd, "repository")
+	owner, ownerProvided := sflags.MustGetStringProvided(cmd, "owner")
+	project, projectProvided := sflags.MustGetStringProvided(cmd, "project")
+
+	if repositoryProvided && (ownerProvided || projectProvided) {
+		cli.Quit("Cannot use --repository flag together with --owner or --project flags")
+	}
+
+	// Parse repository if provided
+	if repositoryProvided {
+		owner, project = parseRepository(repository)
+	}
+
 	global := &GlobalModel{
-		Owner:     sflags.MustGetString(cmd, "owner"),
-		Project:   sflags.MustGetString(cmd, "project"),
+		Owner:     owner,
+		Project:   project,
 		Binary:    sflags.MustGetString(cmd, "binary"),
 		Language:  mustGetLanguage(cmd),
 		License:   sflags.MustGetString(cmd, "license"),
@@ -116,7 +166,7 @@ func (g *GlobalModel) ensureValidForRelease() {
 	}
 
 	if len(errors) != 0 {
-		cli.Quit(strings.Join(errors, "\n"))
+		cli.Quit("%s", strings.Join(errors, "\n"))
 	}
 }
 
@@ -128,7 +178,7 @@ func (m *ReleaseModel) ensureValidForRelease(global *GlobalModel) {
 	}
 
 	if len(errors) != 0 {
-		cli.Quit(strings.Join(errors, "\n"))
+		cli.Quit("%s", strings.Join(errors, "\n"))
 	}
 }
 

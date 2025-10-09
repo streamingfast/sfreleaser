@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.12.4
+
+- Improved git remote resolution: automatically uses matching remote based on owner when available, falls back to `--git-remote` flag or default `origin` when none or multiple remotes match. Uses local git config for fast lookup without server queries.
+- Added `--repository` flag as alternative to `--owner`/`--project` pair; accepts formats like `owner/project`, `github.com/owner/project`, or `https://github.com/owner/project`.
+- Fixed `gh` commands to always pass `--repo <owner>/<project>` flag to ensure correct repository context.
+
 ## v0.12.3
 
 - Renamed `sfreleaser install` to `sfreleaser init`; `install` command still works with deprecation warning.

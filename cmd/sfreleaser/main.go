@@ -69,6 +69,7 @@ func main() {
 			flags.String("license", "Apache-2.0", "The license used for the project")
 			flags.StringP("variant", "v", "", "Defines the variant of the project")
 			flags.StringP("project", "p", "", "Override default computed project name which is directory of root/working directory folder")
+			flags.StringP("repository", "r", "", "GitHub repository in format <owner>/<project> (e.g., streamingfast/firehose-core). Accepts github.com/ or https://github.com/ prefix. Cannot be used with --owner or --project")
 			flags.String("root", "", "If defined, change the working directory of the process before proceeding with the release")
 			flags.String("sfreleaser-min-version", "", "If sets, will check that the version of sfreleaser is at least this version before attempting the build")
 			flags.String("git-remote", "origin", "The git remote to use for pushing the release and commits")

@@ -72,7 +72,7 @@ func renderTemplate(file string, overwrite bool, tmplContent []byte, model map[s
 			cli.NoError(os.MkdirAll(directory, os.ModePerm), "Making directories for template file %q", file)
 		}
 
-		cli.WriteFile(file, buffer.String())
+		cli.WriteFile(file, "%s", buffer.String())
 
 		return file
 	}

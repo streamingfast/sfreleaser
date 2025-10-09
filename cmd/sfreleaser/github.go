@@ -43,7 +43,7 @@ func configureGitHubTokenEnvFile(releaseEnvFile string) {
 		cli.Ensure(githubTokenRegex.MatchString(token), "GitHub token found through %s is invalid, should match %q", from, githubTokenRegex)
 		cli.WriteFile(releaseEnvFile, "GITHUB_TOKEN=%s", token)
 	} else {
-		cli.Quit(dedent(`
+		message := fmt.Sprintf(dedent(`
 			A valid GitHub token is required to perform the release and we couldn't find
 			one through via:
 
@@ -65,16 +65,17 @@ func configureGitHubTokenEnvFile(releaseEnvFile string) {
 
 			The '<github_token>' value must be a valid GitHub personal access token
 			either fine-grained or classic, or a valid GitHub actions token.
-		`, globalGitHubTokenFile, globalGitHubTokenFile))
+		`), globalGitHubTokenFile, globalGitHubTokenFile)
+		cli.Quit("%s", message)
 	}
 }
 
-func releaseURL(version string) string {
-	return strings.TrimSpace(resultOf("gh", "release", "view", version, "--json", "url", "-q", ".url"))
+func releaseURL(global *GlobalModel, version string) string {
+	return strings.TrimSpace(resultOf("gh", "release", "view", version, "--repo", global.Owner+"/"+global.Project, "--json", "url", "-q", ".url"))
 }
 
-func ensureGitHubReleaseValid(version string) {
-	state, url := releaseState(version)
+func ensureGitHubReleaseValid(global *GlobalModel, version string) {
+	state, url := releaseState(global, version)
 
 	switch state {
 	case ghReleaseNotFound:
@@ -87,7 +88,7 @@ func ensureGitHubReleaseValid(version string) {
 	case ghReleaseDraft:
 		fmt.Printf("A draft release for %q already exists at %s\n", version, url)
 		if yes, _ := cli.PromptConfirm("Would you like to delete this existing draft release?"); yes {
-			deleteExistingRelease(version)
+			deleteExistingRelease(global, version)
 			fmt.Println()
 		} else {
 			cli.Quit("Refusing to continue since an existing draft release for this version already exists")
@@ -103,8 +104,8 @@ var (
 	ghReleaseDraft    ghReleaseState = "draft"
 )
 
-func releaseState(version string) (state ghReleaseState, url string) {
-	url, info, err := maybeResultOf("gh release view", "'"+version+"'", "--json url -q .url")
+func releaseState(global *GlobalModel, version string) (state ghReleaseState, url string) {
+	url, info, err := maybeResultOf("gh release view", "'"+version+"'", "--repo", global.Owner+"/"+global.Project, "--json url -q .url")
 	url = strings.TrimSpace(url)
 
 	if err != nil {
@@ -122,8 +123,8 @@ func releaseState(version string) (state ghReleaseState, url string) {
 	return ghReleaseExists, url
 }
 
-func deleteExistingRelease(version string) {
-	run("gh release delete --yes", version)
+func deleteExistingRelease(global *GlobalModel, version string) {
+	run("gh release delete --yes", "--repo", global.Owner+"/"+global.Project, version)
 }
 
 func publishReleaseNow(global *GlobalModel, release *ReleaseModel) {
@@ -141,15 +142,15 @@ func publishReleaseNow(global *GlobalModel, release *ReleaseModel) {
 	version := release.Version
 
 	fmt.Println("Publishing release right now")
-	runSilent("gh release edit", version, "--draft=false")
+	runSilent("gh release edit", version, "--repo", global.Owner+"/"+global.Project, "--draft=false")
 
 	// We re-fetch the releaseURL here because it changed from before publish
-	fmt.Printf("Release published at %s\n", releaseURL(version))
+	fmt.Printf("Release published at %s\n", releaseURL(global, version))
 
 	cli.ExitHandler(deleteTagExitHandlerID, nil)
 
 	zlog.Debug("refreshing git tags now that release happened")
-	runSilent(fmt.Sprintf(`git fetch %s +refs/tags/%s:refs/tags/%s`, global.GitRemote, version, version))
+	runSilent(fmt.Sprintf(`git fetch %s +refs/tags/%s:refs/tags/%s`, resolveGitRemote(global), version, version))
 }
 
 func reviewRelease(releaseURL string) {
