@@ -43,6 +43,24 @@ var ChangelogExtractSectionCmd = Command(changelogExtractSection,
 		output file in the proper format for use in workflows. It supports two formats:
 		- "path": Uses default variable name "changelog"
 		- "variable:path": Uses custom variable name
+
+		GitHub Actions Example Usage:
+
+		  - name: Extract Changelog
+		    id: changelog
+		    run: |
+		      curl -L https://github.com/streamingfast/sfreleaser/releases/download/v0.12.1/sfreleaser_linux_x86_64.tar.gz | tar -xz
+		      chmod +x sfreleaser
+
+		      ./sfreleaser changelog extract-section \
+		        github://token:${{ github.token }}@${{ github.repository }}/$GITHUB_SHA/CHANGELOG.sf.md \
+		        --github-output="changelog:$GITHUB_OUTPUT"
+
+		    - name: Release
+		      uses: softprops/action-gh-release@v2
+		      with:
+		        body: ${{ steps.changelog.outputs.changelog }}
+		        ...
 	`),
 	ExamplePrefixed("sfreleaser changelog extract-section", `
 		# Extract latest section from default CHANGELOG.md
