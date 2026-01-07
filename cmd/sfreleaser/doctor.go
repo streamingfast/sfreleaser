@@ -40,14 +40,13 @@ func doctor(cmd *cobra.Command, _ []string) error {
 			release:
   				goreleaser-docker-image: <something>
 
-		Ensure the image is based on latest 'goreleaser-cross:1.22' or later. If you were using a custom image,
-		update it the base to use 'goreleaser/goreleaser-cross:1.22' or later.
+		Ensure the image is based on 'goreleaser-cross:v1.25' or later. If you were using a custom image,
+		update it the base to use 'goreleaser/goreleaser-cross:v1.25' or later.
 
 		If you are not using a custom image and still have the problem, you might need to re-pull the
-		image, it assume you have it because we do not specify the patch version, only the major and minor.
-		This can be done with the following command:
+		image, as Docker may have cached an older version. This can be done with the following command:
 
-			docker pull --platform=linux/arm64 goreleaser/goreleaser-cross:1.22
+			docker pull --platform=linux/arm64 goreleaser/goreleaser-cross:v1.25
 
 		> **Note**
 		> Change --platform=linux/arm64 to your platform if you are not on ARM64.

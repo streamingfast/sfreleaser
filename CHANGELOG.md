@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.13.0
+
+- Bumped to `Golang` `1.25`, this will pull `goreleaser/goreleaser-cross:v1.25` so expect some delays before your build starts.
+
 ## v0.12.4
 
 - Improved git remote resolution: automatically uses matching remote based on owner when available, falls back to `--git-remote` flag or default `origin` when none or multiple remotes match. Uses local git config for fast lookup without server queries.

@@ -66,7 +66,7 @@ var ReleaseCmd = Command(release,
 		flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps, template your pre-hook with various injected variables, see long description of command for more details")
 		flags.StringArray("upload-extra-assets", nil, "If provided, add this extra asset file to the release, use a 'pre-build-hooks' to generate the file if needed")
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
-		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.24", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
+		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.25", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
 		flags.Bool("no-binaries", false, "Skip building binaries completely; useful for library-only releases or when binaries are built through other means (cannot be used with library variant)")
 
 		// Brew Flags
