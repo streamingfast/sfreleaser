@@ -86,10 +86,10 @@ builds:
 
 archives:
 {{- if .release.NoBinaries }}
-- formats: [binary]
+- format: binary
 {{- else }}
   - id: {{ .global.Project }}
-    ids:
+    builds:
       - darwin-amd64
       - darwin-arm64
       - linux-amd64
@@ -100,7 +100,7 @@ archives:
       {{`{{- if eq .Arch "amd64" }}x86_64`}}
       {{`{{- else if eq .Arch "386" }}i386`}}
       {{`{{- else }}{{ tolower .Arch }}{{ end }}`}}
-    formats: [tar.gz]
+    format: tar.gz
     files:
     {{ if .release.ReadmeRelativePath }}- {{ .release.ReadmeRelativePath }}{{ end }}
     {{ if .release.LicenseRelativePath }}- {{ .release.LicenseRelativePath }}{{ end }}
@@ -110,7 +110,7 @@ checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  version_template: "{{`{{ .Tag }}`}}"
+  name_template: "{{`{{ .Tag }}`}}"
 
 changelog:
   sort: asc

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped to `Golang` `1.25`, this will pull `goreleaser/goreleaser-cross:v1.25` so expect some delays before your build starts.
 
+- Fixed some generated Goreleaser config files to work with latest `goreleaser` releases.
+
 ## v0.12.4
 
 - Improved git remote resolution: automatically uses matching remote based on owner when available, falls back to `--git-remote` flag or default `origin` when none or multiple remotes match. Uses local git config for fast lookup without server queries.

@@ -29,6 +29,33 @@ func doctor(cmd *cobra.Command, _ []string) error {
 		Here a list of known issues and possible solutions:
 
 		##
+		### X release failed after 0s error=yaml: unmarshal errors: line X: field ids not found in type config.Archive (or 'formats' or 'version_template')
+		##
+
+		This error indicates that you are using an outdated version of 'sfreleaser' that generates Goreleaser configuration
+		files with deprecated field names. The Goreleaser v2 configuration has changed some field names:
+
+		- 'archives.ids' is now 'archives.builds'
+		- 'archives.formats' (plural) is now 'archives.format' (singular)
+		- 'snapshot.version_template' is now 'snapshot.name_template'
+
+		**Solution:** Update to the latest version of 'sfreleaser' which generates the correct configuration format.
+		You can update by running:
+
+			brew upgrade sfreleaser
+
+		Or by downloading the latest release from GitHub and replacing your binary. After updating, the tool will
+		generate configurations compatible with the latest Goreleaser versions.
+
+		Additionally, check your project's '.sfreleaser' config file for any custom Docker image version:
+
+			release:
+				goreleaser-docker-image: <something>
+
+		If you have an older image version specified (like 'goreleaser-cross:v1.23' or earlier), update it to
+		'goreleaser/goreleaser-cross:v1.25' or later, or remove the setting entirely to use the default.
+
+		##
 		### X release failed after 0s error=only configurations files on  version: 1  are supported, yours is  version: 2 , please update your configuration
 		##
 
