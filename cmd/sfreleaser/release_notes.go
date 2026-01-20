@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -13,6 +14,7 @@ import (
 var headerRegex = regexp.MustCompile(`^##([^#]+)`)
 
 // readVersionFromChangelog will try to infer the default version from the changelog file.
+// It skips "Unreleased" and "Next" sections and returns the first actual version found.
 func readVersionFromChangelog(changelogFile string) string {
 	if !cli.FileExists(changelogFile) {
 		return ""
@@ -26,7 +28,10 @@ func readVersionFromChangelog(changelogFile string) string {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if headerRegex.MatchString(line) {
-			return extractVersionFromHeader(line)
+			version := extractVersionFromHeader(line)
+			if version != "" {
+				return version
+			}
 		}
 	}
 
@@ -101,4 +106,21 @@ func readReleaseNotes(changelogFile string) string {
 
 	cli.NoError(scanner.Err(), "Unable to scan lines from changelog")
 	return trimBlankLines(strings.Join(releaseNotes, "\n"))
+}
+
+func validateChangelogForVersion(changelogFile string, version string) (warning string, err error) {
+	if !cli.FileExists(changelogFile) {
+		return fmt.Sprintf("No changelog file found at %q, release notes will be empty", changelogFile), nil
+	}
+
+	changelogVersion := readVersionFromChangelog(changelogFile)
+	if changelogVersion == "" {
+		return "", fmt.Errorf("no versioned section found in changelog %q, add a section like '## %s' before releasing", changelogFile, version)
+	}
+
+	if changelogVersion != version {
+		return "", fmt.Errorf("changelog version mismatch: releasing %q but changelog has %q", version, changelogVersion)
+	}
+
+	return "", nil
 }

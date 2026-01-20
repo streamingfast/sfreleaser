@@ -68,6 +68,7 @@ var ReleaseCmd = Command(release,
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
 		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.25", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
 		flags.Bool("no-binaries", false, "Skip building binaries completely; useful for library-only releases or when binaries are built through other means (cannot be used with library variant)")
+		flags.Bool("skip-changelog-validation", false, "Skip validation that changelog contains an entry for the release version")
 
 		// Brew Flags
 		flags.Bool("brew-disabled", false, "[Brew only] Disable Brew tap release completely, only applies for 'Golang'/'Application' types")
@@ -162,6 +163,18 @@ func release(cmd *cobra.Command, args []string) error {
 
 	// For simplicity in the code below
 	version := release.Version
+
+	// Validate changelog contains entry for this version
+	skipChangelogValidation := sflags.MustGetBool(cmd, "skip-changelog-validation")
+	if !skipChangelogValidation {
+		warning, err := validateChangelogForVersion(changelogPath, version)
+		if err != nil {
+			return fmt.Errorf("changelog validation failed: %w", err)
+		}
+		if warning != "" {
+			fmt.Println(warning)
+		}
+	}
 
 	ensureGitHubReleaseValid(global, version)
 
