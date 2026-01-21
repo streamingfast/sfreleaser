@@ -47,7 +47,7 @@ func Test_readVersionFromChangelog(t *testing.T) {
 		{
 			name:     "sample changelog with unreleased",
 			filepath: "testdata/changelog/sample.md",
-			want:     "", // Function returns empty because first header is "Unreleased" which gets skipped
+			want:     "v1.2.3", // Function skips "Unreleased" and returns first actual version
 		},
 		{
 			name:     "changelog without unreleased",
@@ -179,4 +179,87 @@ func createTempChangelog(t *testing.T, content string) string {
 	err := os.WriteFile(tmpFile, []byte(content), 0644)
 	require.NoError(t, err)
 	return tmpFile
+}
+
+func Test_validateChangelogForVersion(t *testing.T) {
+	tests := []struct {
+		name        string
+		content     string
+		version     string
+		wantErr     bool
+		wantWarning bool
+		errContains string
+	}{
+		{
+			name:    "matching version",
+			content: "## v1.0.0\n- Changes",
+			version: "v1.0.0",
+			wantErr: false,
+		},
+		{
+			name:        "mismatched version",
+			content:     "## v1.0.0\n- Changes",
+			version:     "v2.0.0",
+			wantErr:     true,
+			errContains: "changelog version mismatch",
+		},
+		{
+			name:        "unreleased only",
+			content:     "## Unreleased\n- Changes",
+			version:     "v1.0.0",
+			wantErr:     true,
+			errContains: "no versioned section found",
+		},
+		{
+			name:    "unreleased then matching version",
+			content: "## Unreleased\n- WIP\n\n## v1.0.0\n- Changes",
+			version: "v1.0.0",
+			wantErr: false,
+		},
+		{
+			name:    "complex version suffix",
+			content: "## v2.10.5-fh3.0\n- Bumped",
+			version: "v2.10.5-fh3.0",
+			wantErr: false,
+		},
+		{
+			name:    "version without v prefix in changelog",
+			content: "## 1.0.0\n- Changes",
+			version: "v1.0.0",
+			wantErr: false,
+		},
+		{
+			name:    "version with square brackets",
+			content: "## [1.0.0]\n- Changes",
+			version: "v1.0.0",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpFile := createTempChangelog(t, tt.content)
+			warning, err := validateChangelogForVersion(tmpFile, tt.version)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+			} else {
+				require.NoError(t, err)
+			}
+
+			if tt.wantWarning {
+				assert.NotEmpty(t, warning)
+			} else {
+				assert.Empty(t, warning)
+			}
+		})
+	}
+}
+
+func Test_validateChangelogForVersion_noFile(t *testing.T) {
+	warning, err := validateChangelogForVersion("/non/existent/CHANGELOG.md", "v1.0.0")
+	require.NoError(t, err)
+	assert.Contains(t, warning, "No changelog file found at")
 }
