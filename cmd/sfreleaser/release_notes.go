@@ -115,11 +115,11 @@ func validateChangelogForVersion(changelogFile string, version string) (warning 
 
 	changelogVersion := readVersionFromChangelog(changelogFile)
 	if changelogVersion == "" {
-		return "", fmt.Errorf("no versioned section found in changelog %q, add a section like '## %s' before releasing", changelogFile, version)
+		return "", fmt.Errorf("no versioned section found in changelog %q, did you forget to add a section like '## %s' before releasing?", changelogFile, version)
 	}
 
 	if changelogVersion != version {
-		return "", fmt.Errorf("changelog version mismatch: releasing %q but changelog has %q", version, changelogVersion)
+		return "", fmt.Errorf("changelog version mismatch: releasing %q but changelog has %q, did you forget to update the changelog?", version, changelogVersion)
 	}
 
 	return "", nil
