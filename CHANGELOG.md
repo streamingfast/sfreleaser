@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Mount the host user's global Git excludes file (resolved from `core.excludesFile` or `$XDG_CONFIG_HOME/git/ignore`) into the `goreleaser-cross` container and configure Git inside the container to honor it, so dirty-tree detection and archive contents match what the user sees on the host.
+
 ## v0.13.1
 
 - Check if changelog is populated with correct update before release.

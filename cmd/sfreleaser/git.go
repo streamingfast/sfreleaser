@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -151,6 +153,124 @@ func isGitDirty() bool {
 }
 
 var remoteTagRegex = regexp.MustCompile(`refs/tags/(v?[0-9]+\.[0-9]+\.[0-9]+[^\s]*)`)
+
+// resolveHostGlobalGitIgnore tries to find the host user's effective global Git
+// excludes file, using the same precedence Git itself uses:
+//
+//  1. `git config --global --get core.excludesFile` (expanding a leading `~` /
+//     `~/` and `$HOME` references).
+//  2. `$XDG_CONFIG_HOME/git/ignore` if `XDG_CONFIG_HOME` is set.
+//  3. `<user-home>/.config/git/ignore` otherwise.
+//
+// The returned path is an absolute, cleaned path and is guaranteed to refer to
+// an existing regular file on disk. If no suitable file can be located the
+// function returns `("", false)` — callers are expected to treat this as a
+// silent no-op rather than an error.
+func resolveHostGlobalGitIgnore() (string, bool) {
+	if path, ok := resolveFromGitConfig(); ok {
+		zlog.Debug("resolved host global git ignore from git config", zap.String("path", path))
+		return path, true
+	}
+
+	if path, ok := resolveFromXDGFallback(); ok {
+		zlog.Debug("resolved host global git ignore from XDG fallback", zap.String("path", path))
+		return path, true
+	}
+
+	zlog.Debug("no host global git ignore file found")
+	return "", false
+}
+
+// resolveFromGitConfig returns the absolute path to the global excludes file
+// configured via `git config --global --get core.excludesFile` if (and only if)
+// the file currently exists as a regular file on disk.
+func resolveFromGitConfig() (string, bool) {
+	output, _, err := maybeResultOf("git config --global --get core.excludesFile")
+	if err != nil {
+		zlog.Debug("git config --global --get core.excludesFile returned error (treated as unset)", zap.Error(err))
+		return "", false
+	}
+
+	value := strings.TrimSpace(output)
+	if value == "" {
+		return "", false
+	}
+
+	expanded, ok := expandHomeReferences(value)
+	if !ok {
+		return "", false
+	}
+
+	return existingRegularFile(expanded)
+}
+
+// resolveFromXDGFallback returns the absolute path to the XDG-default global
+// excludes file location (`$XDG_CONFIG_HOME/git/ignore` or
+// `<home>/.config/git/ignore`) when that file exists as a regular file.
+func resolveFromXDGFallback() (string, bool) {
+	if xdg := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME")); xdg != "" {
+		return existingRegularFile(filepath.Join(xdg, "git", "ignore"))
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		zlog.Debug("unable to resolve user home directory for XDG fallback", zap.Error(err))
+		return "", false
+	}
+
+	return existingRegularFile(filepath.Join(home, ".config", "git", "ignore"))
+}
+
+// expandHomeReferences expands a leading `~` (with or without a trailing slash)
+// and any embedded `$HOME` token in the provided value using the current
+// user's home directory. It returns the expanded string plus a boolean
+// indicating whether the resolution succeeded (it can only fail when the home
+// directory itself cannot be resolved).
+func expandHomeReferences(value string) (string, bool) {
+	needsHome := strings.HasPrefix(value, "~") || strings.Contains(value, "$HOME")
+	if !needsHome {
+		return value, true
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		zlog.Debug("unable to resolve user home directory for ~ / $HOME expansion", zap.Error(err))
+		return "", false
+	}
+
+	if value == "~" {
+		value = home
+	} else if strings.HasPrefix(value, "~/") {
+		value = filepath.Join(home, value[2:])
+	}
+
+	value = strings.ReplaceAll(value, "$HOME", home)
+	return value, true
+}
+
+// existingRegularFile resolves `path` to an absolute, cleaned form and verifies
+// it points at an existing regular file. Symlinks pointing to regular files
+// are accepted (we follow them via `os.Stat`).
+func existingRegularFile(path string) (string, bool) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		zlog.Debug("unable to make path absolute", zap.String("path", path), zap.Error(err))
+		return "", false
+	}
+	abs = filepath.Clean(abs)
+
+	info, err := os.Stat(abs)
+	if err != nil {
+		zlog.Debug("global git ignore candidate not usable", zap.String("path", abs), zap.Error(err))
+		return "", false
+	}
+	if !info.Mode().IsRegular() {
+		zlog.Debug("global git ignore candidate is not a regular file", zap.String("path", abs))
+		return "", false
+	}
+
+	return abs, true
+}
 
 func latestTag(remote string) (latestTag string) {
 	defer func() {
