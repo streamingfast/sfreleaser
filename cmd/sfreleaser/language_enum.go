@@ -18,16 +18,19 @@ const (
 	LanguageGolang
 	// LanguageRust is a Language of type Rust.
 	LanguageRust
+	// LanguageJavaScript is a Language of type JavaScript.
+	LanguageJavaScript
 )
 
 var ErrInvalidLanguage = fmt.Errorf("not a valid Language, try [%s]", strings.Join(_LanguageNames, ", "))
 
-const _LanguageName = "UnsetGolangRust"
+const _LanguageName = "UnsetGolangRustJavaScript"
 
 var _LanguageNames = []string{
 	_LanguageName[0:5],
 	_LanguageName[5:11],
 	_LanguageName[11:15],
+	_LanguageName[15:25],
 }
 
 // LanguageNames returns a list of possible string values of Language.
@@ -38,9 +41,10 @@ func LanguageNames() []string {
 }
 
 var _LanguageMap = map[Language]string{
-	LanguageUnset:  _LanguageName[0:5],
-	LanguageGolang: _LanguageName[5:11],
-	LanguageRust:   _LanguageName[11:15],
+	LanguageUnset:      _LanguageName[0:5],
+	LanguageGolang:     _LanguageName[5:11],
+	LanguageRust:       _LanguageName[11:15],
+	LanguageJavaScript: _LanguageName[15:25],
 }
 
 // String implements the Stringer interface.
@@ -65,6 +69,8 @@ var _LanguageValue = map[string]Language{
 	strings.ToLower(_LanguageName[5:11]):  LanguageGolang,
 	_LanguageName[11:15]:                  LanguageRust,
 	strings.ToLower(_LanguageName[11:15]): LanguageRust,
+	_LanguageName[15:25]:                  LanguageJavaScript,
+	strings.ToLower(_LanguageName[15:25]): LanguageJavaScript,
 }
 
 // ParseLanguage attempts to convert a string to a Language.

@@ -88,6 +88,9 @@ func initCmd(cmd *cobra.Command, _ []string) error {
 			sfreleaserYamlTmpl = sfreleaserRustYamlTmpl
 		}
 
+	case LanguageJavaScript:
+		sfreleaserYamlTmpl = sfreleaserJavaScriptYamlTmpl
+
 	default:
 		cli.Quit("unhandled language %q", global.Language)
 	}

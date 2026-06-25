@@ -16,6 +16,7 @@ import (
 //		Unset
 //		Golang
 //	 Rust
+//	 JavaScript
 //
 // )
 type Language uint
@@ -29,6 +30,8 @@ func LanguageResolveAlias(in string) string {
 	switch lowered {
 	case "go":
 		return "golang"
+	case "js", "typescript", "ts":
+		return "javascript"
 	}
 
 	return in

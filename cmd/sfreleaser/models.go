@@ -274,6 +274,9 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 			m.Rust.Crates = sflags.MustGetStringArray(cmd, "rust-crates")
 		}
 
+	case LanguageJavaScript:
+		// Nothing special for JavaScript, it's a library-only language for now
+
 	default:
 		cli.Quit("unhandled language %q", global.Language)
 	}

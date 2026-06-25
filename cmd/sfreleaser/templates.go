@@ -31,6 +31,9 @@ var sfreleaserRustYamlTmpl []byte
 //go:embed templates/sfreleaser-substreams.yaml.gotmpl
 var sfreleaserSubstreamsYamlTmpl []byte
 
+//go:embed templates/sfreleaser-javascript.yaml.gotmpl
+var sfreleaserJavaScriptYamlTmpl []byte
+
 func getInstallTemplateModel(global *GlobalModel, noBinaries bool) map[string]any {
 	return map[string]any{
 		"global":     global,
