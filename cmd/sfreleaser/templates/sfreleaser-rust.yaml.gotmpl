@@ -8,12 +8,7 @@ release:
   no-binaries: true
   {{- end }}
   {{- if .rust.Crates }}
-  # This is the list of Rust crates that are going to be 'cargo publish'.
-  # **Important** Ordering must be strictly specified so that crates
-  # are ordered by dependency order, a crate that depends on another
-  # one should be listed below it's dependency.
-  #
-  # The generated values below are **unordered**, you must re-order them!
+  # The list of Rust crates that are going to be 'cargo publish', ordering is not important.
   rust-crates:
   {{- range $crate := .rust.Crates }}
   - {{ $crate }}

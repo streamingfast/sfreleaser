@@ -66,7 +66,7 @@ var ReleaseCmd = Command(release,
 		flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps, template your pre-hook with various injected variables, see long description of command for more details")
 		flags.StringArray("upload-extra-assets", nil, "If provided, add this extra asset file to the release, use a 'pre-build-hooks' to generate the file if needed")
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
-		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.25", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
+		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.26", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
 		flags.Bool("no-binaries", false, "Skip building binaries completely; useful for library-only releases or when binaries are built through other means (cannot be used with library variant)")
 		flags.Bool("skip-changelog-validation", false, "Skip validation that changelog contains an entry for the release version")
 
@@ -76,7 +76,8 @@ var ReleaseCmd = Command(release,
 
 		// Rust Flags
 		flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish' when publishing, the tool might provide some default on its own, Bash rules are used to split the arguments from the string")
-		flags.StringArray("rust-crates", nil, "[Rust only] The list of crates we should publish, the project is expected to be a workspace if this is used")
+		flags.StringArray("rust-crates", nil, "[Rust only] The list of crates we should publish, the project is expected to be a workspace if this is used, ordering is irrelevant unless 'rust-cargo-publish-mode' is 'sequential'")
+		flags.String("rust-cargo-publish-mode", RustCratesPublishModeInferred, "[Rust only] How the crates are published, 'inferred' publishes them all through a single 'cargo publish' invocation letting Cargo order them (requires Cargo >= "+cargoMultiPackagePublishMinVersion.String()+"), 'sequential' publishes them one by one in the exact 'rust-crates' order")
 
 		// Substreams Flags
 		flags.String("substreams-registry-url", "", "[Substreams only] The registry URL to publish the package to (defaults to official registry if not specified)")
@@ -156,6 +157,13 @@ func release(cmd *cobra.Command, args []string) error {
 	cli.NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
 
 	verifyTools()
+
+	// Resolved before anything is built or released so that a missing/outdated Cargo is reported
+	// upfront instead of once the GitHub release has already been created.
+	if release.Rust != nil && len(release.Rust.Crates) > 0 {
+		verifyRustTools()
+		release.Rust.SinglePublishInvocation = resolveRustCratesSinglePublishInvocation(release.Rust.CratesPublishMode)
+	}
 
 	if release.Version == "" {
 		release.Version = promptVersion(changelogPath, resolveGitRemote(global))
@@ -297,11 +305,13 @@ func release(cmd *cobra.Command, args []string) error {
 		if yes, _ := cli.PromptConfirm("Publish release right now?"); yes {
 			publishReleaseNow(global, release)
 		} else {
+			// Mirrors what [publishReleaseNow] would have published, so that the user gets the
+			// exact commands to run manually for every variant that publishes something.
 			if global.Language == LanguageRust {
-				switch global.Variant {
-				case VariantSubstreams:
+				switch {
+				case global.Variant == VariantSubstreams:
 					printSubstreamsRegistryNotPublishedMessage(release.Substreams)
-				case VariantLibrary:
+				case len(release.Rust.Crates) > 0:
 					printRustCratesNotPublishedMessage(release.Rust)
 				}
 			}
