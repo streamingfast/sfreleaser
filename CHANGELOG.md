@@ -5,13 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## v0.15.0
 
 ### Added
 
 - Add support for `javascript` language (aliases: `js`, `typescript`, `ts`) for library-only releases without special build steps.
 
 - Mount the host user's global Git excludes file (resolved from `core.excludesFile` or `$XDG_CONFIG_HOME/git/ignore`) into the `goreleaser-cross` container and configure Git inside the container to honor it, so dirty-tree detection and archive contents match what the user sees on the host.
+
+- Add `release.rust-cargo-publish-mode` config value (`inferred` by default, `sequential` to opt out) controlling how Rust crates are published.
+
+- Add support for `sfreleaser build` on Rust `library` and `application` projects. When `release.rust-crates` is configured, the build runs `cargo publish --dry-run` on the crates so packaging problems are caught before an actual release. A warning is printed for the `application` variant to make it clear that binaries are not built by `sfreleaser` for Rust projects.
+
+### Changed
+
+- Bumped to `Golang` `1.26`, this will pull `goreleaser/goreleaser-cross:v1.26` so expect some delays before your build starts.
+
+- **The ordering of `release.rust-crates` is now irrelevant.** All crates are published through a single `cargo publish -p <crate> -p <crate> ...` invocation, which lets Cargo order them by dependency itself and wait for each of them to be available on the registry before publishing the crates depending on it. This requires `Cargo` `1.90` or later; if yours is older, `sfreleaser` now fails early with an actionable message, and you can set `release.rust-cargo-publish-mode: sequential` to keep the previous one-crate-at-a-time behavior (in which case the list must stay strictly ordered by dependency).
+
+- `cargo` presence and version are now verified at the very beginning of `sfreleaser release`, instead of failing once the GitHub release has already been created.
+
+### Fixed
+
+- Fixed the "here are the commands to publish your crates manually" message not being printed when declining to publish a Rust release whose variant is not `library`, even though those crates do get published when accepting.
 
 ## v0.13.1
 

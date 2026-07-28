@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"github.com/streamingfast/cli"
 	. "github.com/streamingfast/cli"
 	"github.com/streamingfast/cli/sflags"
@@ -45,7 +46,13 @@ var BuildCmd = Command(nil,
 		// build vs release, what a mess. How to deal with this? I don't want to break compatibility.
 		flags.Bool("allow-dirty", false, "Perform release step even if Git is not clean, tries to configured used tool(s) to also allow dirty Git state")
 		flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps")
-		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.25", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
+		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.26", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
+
+		// Those default to empty on purpose, when unset the value configured on the 'release'
+		// command is used instead, see [rustBuildModel].
+		flags.StringArray("rust-crates", nil, "[Rust only] The list of crates to verify, defaults to the 'release.rust-crates' config value")
+		flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish', defaults to the 'release.rust-cargo-publish-args' config value")
+		flags.String("rust-cargo-publish-mode", "", "[Rust only] How the crates are published, defaults to the 'release.rust-cargo-publish-mode' config value")
 
 		// Flag specific to build
 		flags.Bool("all", false, "Build for all platforms and not your current machine")
@@ -108,6 +115,12 @@ func build(cmd *cobra.Command, args []string) error {
 
 	cli.NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
 
+	// Rust projects that are not Substreams have no Goreleaser artifacts to produce, building
+	// them is about verifying that their crates would be publishable.
+	if global.Language == LanguageRust && global.Variant != VariantSubstreams {
+		return buildRustCrates(cmd, global, allowDirty, preBuildHooks)
+	}
+
 	verifyTools()
 
 	// For simplicity in the code below
@@ -161,6 +174,83 @@ func build(cmd *cobra.Command, args []string) error {
 	buildArtifacts(global, build, gitHubRelease)
 
 	return nil
+}
+
+// buildRustCrates performs the 'build' command for a Rust project that is not a Substreams one.
+// There is no binary to cross-compile for those, so the build consists in running the pre-build
+// hooks and then verifying, through 'cargo publish --dry-run', that the configured crates would
+// be publishable as-is.
+func buildRustCrates(cmd *cobra.Command, global *GlobalModel, allowDirty bool, preBuildHooks []string) error {
+	if global.Variant == VariantApplication {
+		fmt.Println(dedent(`
+			**Warning** 'sfreleaser' does not build binaries for Rust 'application' projects, it does
+			not know how to cross-compile Rust today. Use 'pre-build-hooks' to build them yourself and
+			'upload-extra-assets' (on 'sfreleaser release') to attach them to the release.
+		`))
+		fmt.Println()
+	}
+
+	rust := rustBuildModel(cmd)
+	if len(rust.Crates) == 0 {
+		fmt.Println(dedent(`
+			No crate configured through the 'release.rust-crates' config value, there is nothing to
+			build nor verify for this project.
+		`))
+
+		return nil
+	}
+
+	verifyRustTools()
+	rust.SinglePublishInvocation = resolveRustCratesSinglePublishInvocation(rust.CratesPublishMode)
+
+	buildDirectory := "build"
+	cli.NoError(os.MkdirAll(buildDirectory, os.ModePerm), "Unable to create build directory")
+
+	// By doing this after creating the build directory, we ensure that it's ignored, the user
+	// will need to ignore it to proceed (or --allow-dirty).
+	if !allowDirty {
+		ensureGitNotDirty()
+	}
+
+	if len(preBuildHooks) > 0 {
+		fmt.Println()
+		fmt.Printf("Executing %d pre-build hook(s)\n", len(preBuildHooks))
+		executeHooks(preBuildHooks, buildDirectory, global, &ReleaseModel{Rust: rust})
+	}
+
+	fmt.Println()
+	fmt.Printf("Verifying that the %d configured crate(s) can be published\n", len(rust.Crates))
+	verifyRustCratesPublish(rust, allowDirty)
+
+	return nil
+}
+
+// rustBuildModel reads the Rust crates configuration for the 'build' command. Each value falls
+// back on its 'release' scoped counterpart when unset, so that a '.sfreleaser' file only needs to
+// configure the crates once, under its 'release' section.
+func rustBuildModel(cmd *cobra.Command) *RustReleaseModel {
+	crates := sflags.MustGetStringArray(cmd, "rust-crates")
+	if len(crates) == 0 {
+		crates = viper.GetStringSlice("release.rust-crates")
+	}
+
+	publishArgs := sflags.MustGetString(cmd, "rust-cargo-publish-args")
+	if publishArgs == "" {
+		publishArgs = viper.GetString("release.rust-cargo-publish-args")
+	}
+
+	publishMode := sflags.MustGetString(cmd, "rust-cargo-publish-mode")
+	if publishMode == "" {
+		publishMode = viper.GetString("release.rust-cargo-publish-mode")
+	}
+
+	cli.NoError(validateRustCratesPublishMode(publishMode), "Invalid 'rust-cargo-publish-mode' config value")
+
+	return &RustReleaseModel{
+		CargoPublishArgs:  unquotedFlatten(publishArgs),
+		Crates:            crates,
+		CratesPublishMode: publishMode,
+	}
 }
 
 func buildSubstreamsPackage(global *GlobalModel) {

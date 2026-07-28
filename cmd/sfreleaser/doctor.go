@@ -53,7 +53,7 @@ func doctor(cmd *cobra.Command, _ []string) error {
 				goreleaser-docker-image: <something>
 
 		If you have an older image version specified (like 'goreleaser-cross:v1.23' or earlier), update it to
-		'goreleaser/goreleaser-cross:v1.25' or later, or remove the setting entirely to use the default.
+		'goreleaser/goreleaser-cross:v1.26' or later, or remove the setting entirely to use the default.
 
 		##
 		### X release failed after 0s error=only configurations files on  version: 1  are supported, yours is  version: 2 , please update your configuration
@@ -67,13 +67,13 @@ func doctor(cmd *cobra.Command, _ []string) error {
 			release:
   				goreleaser-docker-image: <something>
 
-		Ensure the image is based on 'goreleaser-cross:v1.25' or later. If you were using a custom image,
-		update it the base to use 'goreleaser/goreleaser-cross:v1.25' or later.
+		Ensure the image is based on 'goreleaser-cross:v1.26' or later. If you were using a custom image,
+		update it the base to use 'goreleaser/goreleaser-cross:v1.26' or later.
 
 		If you are not using a custom image and still have the problem, you might need to re-pull the
 		image, as Docker may have cached an older version. This can be done with the following command:
 
-			docker pull --platform=linux/arm64 goreleaser/goreleaser-cross:v1.25
+			docker pull --platform=linux/arm64 goreleaser/goreleaser-cross:v1.26
 
 		> **Note**
 		> Change --platform=linux/arm64 to your platform if you are not on ARM64.
@@ -144,6 +144,40 @@ func doctor(cmd *cobra.Command, _ []string) error {
 
 		To fix this, you need to update your remote URL to point at the new location. You can
 		use the following command to do so: 'git remote set-url origin <new-url>'.
+
+		##
+		### error: the argument '--package [<SPEC>]' cannot be used multiple times (or a similar error on 'cargo publish')
+		##
+
+		Your local Cargo is too old. Since Cargo 1.90, a single 'cargo publish' invocation accepts
+		multiple '-p <crate>' arguments, orders the crates by dependency itself and waits for each
+		of them to be available on the registry before publishing the crates depending on it. This
+		is how 'sfreleaser' publishes crates now, which is why the 'release.rust-crates' order no
+		longer matters.
+
+		Update your Rust toolchain with 'rustup update stable'. If you cannot update, fall back on
+		publishing the crates one by one with:
+
+		    release:
+		        rust-cargo-publish-mode: sequential
+
+		In that mode, the 'release.rust-crates' list must be strictly ordered by dependency, a crate
+		must appear after every crate it depends on.
+
+		##
+		### error: N files in the working directory contain changes that were not yet committed into git (on 'cargo publish')
+		##
+
+		Cargo refuses to package a crate when the Git working directory is dirty. This usually
+		happens when a 'pre-build-hooks' entry generates a file that lives inside one of the crate
+		directories (a Protobuf descriptor, a generated source file, ...) and that file is not
+		committed.
+
+		Either commit the generated file, or run with '--allow-dirty' which 'sfreleaser' forwards
+		to 'cargo publish'.
+
+		Note also that a file needed at packaging time must live inside the crate directory, a
+		crate cannot include files sitting outside of its own directory.
 	`))
 
 	return nil

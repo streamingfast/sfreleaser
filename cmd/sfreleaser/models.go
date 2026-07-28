@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -150,8 +151,8 @@ func (g *GlobalModel) ResolveFile(in string) string {
 func (g *GlobalModel) ensureValidForBuild() {
 	g.ensureValidForRelease()
 
-	if g.Language != LanguageGolang && !(g.Language == LanguageRust && g.Variant == VariantSubstreams) {
-		cli.Quit(`'sfreleaser build' only works for Go projects and Rust substreams projects at the moment, sorry!`)
+	if g.Language != LanguageGolang && g.Language != LanguageRust {
+		cli.Quit(`'sfreleaser build' only works for Go and Rust projects at the moment, sorry!`)
 	}
 }
 
@@ -175,6 +176,12 @@ func (m *ReleaseModel) ensureValidForRelease(global *GlobalModel) {
 
 	if m.NoBinaries && global.Variant == VariantLibrary {
 		errors = append(errors, `The "noBinaries" flag cannot be used with library variant as libraries already skip binary builds by default`)
+	}
+
+	if m.Rust != nil {
+		if err := validateRustCratesPublishMode(m.Rust.CratesPublishMode); err != nil {
+			errors = append(errors, fmt.Sprintf(`The "rust-cargo-publish-mode" config value is invalid: %s`, err))
+		}
 	}
 
 	if len(errors) != 0 {
@@ -272,6 +279,7 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 			m.Rust = &RustReleaseModel{}
 			m.Rust.CargoPublishArgs = unquotedFlatten(sflags.MustGetString(cmd, "rust-cargo-publish-args"))
 			m.Rust.Crates = sflags.MustGetStringArray(cmd, "rust-crates")
+			m.Rust.CratesPublishMode = sflags.MustGetString(cmd, "rust-cargo-publish-mode")
 		}
 
 	case LanguageJavaScript:
@@ -316,6 +324,15 @@ func caseInsensitiveMatcher(in string) func(string) bool {
 type RustReleaseModel struct {
 	CargoPublishArgs []string
 	Crates           []string
+
+	// CratesPublishMode is the raw 'rust-cargo-publish-mode' config value, one of
+	// [RustCratesPublishModeInferred] or [RustCratesPublishModeSequential].
+	CratesPublishMode string
+
+	// SinglePublishInvocation is resolved out of [RustReleaseModel.CratesPublishMode] by
+	// [resolveRustCratesSinglePublishInvocation]. When true, every crate is published through
+	// a single 'cargo publish' invocation and Cargo orders them by dependency itself.
+	SinglePublishInvocation bool
 }
 
 type SubstreamsReleaseModel struct {
