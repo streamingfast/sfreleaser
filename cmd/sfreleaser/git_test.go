@@ -2,7 +2,9 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -43,6 +45,53 @@ func clearGitGlobalConfig(t *testing.T) {
 	require.NoError(t, os.WriteFile(configPath, []byte(""), 0o644))
 	t.Setenv("GIT_CONFIG_GLOBAL", configPath)
 	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+}
+
+// writeGitGlobalConfigContent writes `content` as the global Git config used by
+// commands run from the test, isolating them from the developer's real
+// `~/.gitconfig` and from any system-wide config installed on the runner.
+func writeGitGlobalConfigContent(t *testing.T, content string) {
+	t.Helper()
+	configPath := filepath.Join(t.TempDir(), "gitconfig")
+	require.NoError(t, os.WriteFile(configPath, []byte(content), 0o644))
+	t.Setenv("GIT_CONFIG_GLOBAL", configPath)
+	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+}
+
+// initGitRepositoryWithCommit creates a Git repository holding a single commit
+// and makes it the working directory for the duration of the test. The PTY is
+// disabled so `run` and friends keep a deterministic output under `go test`.
+func initGitRepositoryWithCommit(t *testing.T) string {
+	t.Helper()
+
+	previousPtyDisabled := ptyDisabled
+	ptyDisabled = true
+	t.Cleanup(func() { ptyDisabled = previousPtyDisabled })
+
+	directory := t.TempDir()
+	t.Chdir(directory)
+	clearGitGlobalConfig(t)
+
+	t.Setenv("GIT_AUTHOR_NAME", "sfreleaser")
+	t.Setenv("GIT_AUTHOR_EMAIL", "sfreleaser@example.com")
+	t.Setenv("GIT_COMMITTER_NAME", "sfreleaser")
+	t.Setenv("GIT_COMMITTER_EMAIL", "sfreleaser@example.com")
+
+	runGitInTest(t, "init", "--initial-branch=main")
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "README.md"), []byte("test\n"), 0o644))
+	runGitInTest(t, "add", "README.md")
+	runGitInTest(t, "commit", "--no-gpg-sign", "-m", "initial commit")
+
+	return directory
+}
+
+// runGitInTest runs a Git command for test setup purposes, reporting the
+// command output on failure. Setup does not go through `run` because that one
+// terminates the process (and so the whole test binary) on error.
+func runGitInTest(t *testing.T, arguments ...string) {
+	t.Helper()
+	output, err := exec.Command("git", arguments...).CombinedOutput()
+	require.NoError(t, err, "git %s failed: %s", strings.Join(arguments, " "), output)
 }
 
 func Test_resolveHostGlobalGitIgnore_FromGitConfig_AbsolutePath(t *testing.T) {
@@ -149,4 +198,29 @@ func Test_resolveHostGlobalGitIgnore_NothingConfigured(t *testing.T) {
 	got, ok := resolveHostGlobalGitIgnore()
 	require.False(t, ok)
 	require.Equal(t, "", got)
+}
+
+func Test_createTemporaryTag_WithTagGpgSignEnabled(t *testing.T) {
+	initGitRepositoryWithCommit(t)
+
+	// `gpg.program` and `GIT_EDITOR` are neutered so that a regression fails fast
+	// instead of hanging on an editor or on a GPG passphrase prompt.
+	writeGitGlobalConfigContent(t, "[tag]\n\tgpgsign = true\n[gpg]\n\tprogram = /bin/false\n")
+	t.Setenv("GIT_EDITOR", "true")
+
+	createTemporaryTag("v1.2.3")
+
+	objectType := strings.TrimSpace(resultOf("git cat-file -t v1.2.3"))
+	require.Equal(t, "commit", objectType, "temporary tag must stay lightweight so it is never signed nor annotated")
+}
+
+func Test_createTemporaryTag_ThenDeleteTemporaryTag(t *testing.T) {
+	initGitRepositoryWithCommit(t)
+	clearGitGlobalConfig(t)
+
+	createTemporaryTag("v1.2.3")
+	require.Equal(t, "v1.2.3", strings.TrimSpace(resultOf("git tag --list")))
+
+	deleteTemporaryTag("v1.2.3")
+	require.Equal(t, "", strings.TrimSpace(resultOf("git tag --list")))
 }

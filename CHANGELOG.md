@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- Fixed `sfreleaser release` and `sfreleaser build` hanging on an editor (and possibly on a GPG passphrase prompt) when `tag.gpgsign` is enabled in your Git configuration. The temporary tag created for Goreleaser is now always created unsigned, which also makes those commands usable from non-interactive environments. The tag published on GitHub is unaffected, it is created server-side by the release itself.
+
 ## v0.15.0
 
 ### Added

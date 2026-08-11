@@ -148,11 +148,11 @@ func build(cmd *cobra.Command, args []string) error {
 	if version != "" {
 		fmt.Println()
 		fmt.Println("Creating temporary tag so that goreleaser can work properly")
-		run("git tag", version)
+		createTemporaryTag(version)
 
 		cli.ExitHandler(deleteTagExitHandlerID, func(_ int) {
 			zlog.Debug("Deleting local temporary tag")
-			runSilent("git tag -d", version)
+			deleteTemporaryTag(version)
 		})
 	}
 

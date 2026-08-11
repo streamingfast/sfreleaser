@@ -73,6 +73,24 @@ func resolveGitRemote(global *GlobalModel) string {
 	return global.GitRemote
 }
 
+// createTemporaryTag creates the local throw-away tag that Goreleaser needs to
+// resolve the version being released.
+//
+// The `tag.gpgsign` config is forced off for that single invocation: when it is
+// enabled, Git creates a *signed annotated* tag, which requires a tag message and
+// therefore opens `$GIT_EDITOR` (and GPG may in turn ask for a passphrase), both
+// of which hang any non-interactive run. The signature would be pointless anyway,
+// this tag is deleted by [deleteTemporaryTag] as soon as the command completes and
+// the tag that ends up published is created server-side by the GitHub release.
+func createTemporaryTag(version string) {
+	run("git -c tag.gpgsign=false tag", version)
+}
+
+// deleteTemporaryTag removes the local tag created by [createTemporaryTag].
+func deleteTemporaryTag(version string) {
+	runSilent("git tag -d", version)
+}
+
 func ensureGitSync(global *GlobalModel) {
 	state := fetchGitSyncState()
 
