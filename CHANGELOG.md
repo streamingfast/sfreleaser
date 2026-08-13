@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed `sfreleaser release` and `sfreleaser build` hanging on an editor (and possibly on a GPG passphrase prompt) when `tag.gpgsign` is enabled in your Git configuration. The temporary tag created for Goreleaser is now always created unsigned, which also makes those commands usable from non-interactive environments. The tag published on GitHub is unaffected, it is created server-side by the release itself.
 
+- Fixed your terminal being left in a broken state, typing back escape sequences like `^[[2;2R`, when a command run by `sfreleaser` interacts with the terminal. Commands running in a PTY now receive your keystrokes and your terminal's real dimensions, and your terminal is restored when they complete.
+
 ## v0.15.0
 
 ### Added
