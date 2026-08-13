@@ -119,9 +119,6 @@ func internalMaybeRun(inputs []string, silent bool) (output string, info *comman
 	info = newCommandInfo(inputs...)
 	cli.Ensure(info.command != "", "Must have at least command to run")
 
-	// FIXME: What to do with error where program would like to receive data written to terminal,
-	// for example for input?
-
 	captured := bytes.NewBuffer(nil)
 
 	var outputWriter io.Writer = os.Stdout
@@ -147,6 +144,9 @@ func internalMaybeRun(inputs []string, silent bool) (output string, info *comman
 		ptyFile, err := pty.Start(cmd)
 		cli.NoError(err, "Unable to start command through PTY")
 		defer ptyFile.Close()
+
+		// Must be detached before the PTY is closed, hence declared after it
+		defer attachTerminal(ptyFile)()
 
 		go func() {
 			zlog.Debug("starting copy of process pty output to stdout")
