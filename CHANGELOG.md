@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Added `brew-pull-request` (config at `release.brew-pull-request`, flag `--brew-pull-request`) to have Goreleaser open a pull request on the tap instead of committing the formula straight to its default branch. Needed for taps whose default branch is protected, where the direct commit fails with `409 Could not update file: Changes must be made through a pull request` after the release itself has already been published.
+
 ## v0.16.0
 
 ### Fixed

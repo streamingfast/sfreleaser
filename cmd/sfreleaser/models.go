@@ -262,6 +262,7 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 
 	m.Brew = &BrewReleaseModel{
 		Disabled:     sflags.MustGetBool(cmd, "brew-disabled"),
+		PullRequest:  sflags.MustGetBool(cmd, "brew-pull-request"),
 		TapRepoOwner: tapRepoOwner,
 		TapRepoName:  tapRepoName,
 	}
@@ -350,6 +351,7 @@ type GitHubReleaseModel struct {
 
 type BrewReleaseModel struct {
 	Disabled     bool
+	PullRequest  bool
 	TapRepoOwner string
 	TapRepoName  string
 }
