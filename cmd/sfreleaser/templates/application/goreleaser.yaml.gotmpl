@@ -137,6 +137,10 @@ brews:
     repository:
       owner: {{ .release.Brew.TapRepoOwner }}
       name: {{ .release.Brew.TapRepoName }}
+{{- if .release.Brew.PullRequest }}
+      pull_request:
+        enabled: true
+{{- end }}
     commit_author:
       name: goreleaser
     homepage: "https://github.com/{{ .global.Owner }}/{{ .global.Project }}"

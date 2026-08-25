@@ -130,6 +130,22 @@ func doctor(cmd *cobra.Command, _ []string) error {
 		        brew-disabled: true
 
 		##
+		### homebrew formula: could not update "<formula>.rb": PUT https://api.github.com/repos/<owner>/<tap-repo>/contents/<...>: 409 Could not update file: Changes must be made through a pull request
+		##
+
+		The tap's default branch is protected and refuses the direct commit Goreleaser makes by
+		default. Note that the release itself has already been published at this point, only the
+		formula is missing.
+
+		Have Goreleaser open a pull request on the tap instead:
+
+		    release:
+		        brew-pull-request: true
+
+		Or pass '--brew-pull-request' for a single run. The pull request still needs to be merged
+		for the formula to land.
+
+		##
 		### Failed to upload artifact <...> https://uploads.github.com/repos/<org>/<repo>/releases/<resource>: 307 Moved Permanently
 		##
 
