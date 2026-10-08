@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `brew-pull-request` (config at `release.brew-pull-request`, flag `--brew-pull-request`) to have Goreleaser open a pull request on the tap instead of committing the formula straight to its default branch. Needed for taps whose default branch is protected, where the direct commit fails with `409 Could not update file: Changes must be made through a pull request` after the release itself has already been published.
 
+### Changed
+
+- Bumped to `Golang` `1.27`, this will pull `goreleaser/goreleaser-cross:v1.27` so expect some delays before your build starts.
+
 ## v0.16.0
 
 ### Fixed
