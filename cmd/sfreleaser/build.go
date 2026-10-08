@@ -46,7 +46,7 @@ var BuildCmd = Command(nil,
 		// build vs release, what a mess. How to deal with this? I don't want to break compatibility.
 		flags.Bool("allow-dirty", false, "Perform release step even if Git is not clean, tries to configured used tool(s) to also allow dirty Git state")
 		flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps")
-		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.26", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
+		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.27", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
 
 		// Those default to empty on purpose, when unset the value configured on the 'release'
 		// command is used instead, see [rustBuildModel].

@@ -53,7 +53,7 @@ func doctor(cmd *cobra.Command, _ []string) error {
 				goreleaser-docker-image: <something>
 
 		If you have an older image version specified (like 'goreleaser-cross:v1.23' or earlier), update it to
-		'goreleaser/goreleaser-cross:v1.26' or later, or remove the setting entirely to use the default.
+		'goreleaser/goreleaser-cross:v1.27' or later, or remove the setting entirely to use the default.
 
 		##
 		### X release failed after 0s error=only configurations files on  version: 1  are supported, yours is  version: 2 , please update your configuration
@@ -67,13 +67,13 @@ func doctor(cmd *cobra.Command, _ []string) error {
 			release:
   				goreleaser-docker-image: <something>
 
-		Ensure the image is based on 'goreleaser-cross:v1.26' or later. If you were using a custom image,
-		update it the base to use 'goreleaser/goreleaser-cross:v1.26' or later.
+		Ensure the image is based on 'goreleaser-cross:v1.27' or later. If you were using a custom image,
+		update it the base to use 'goreleaser/goreleaser-cross:v1.27' or later.
 
 		If you are not using a custom image and still have the problem, you might need to re-pull the
 		image, as Docker may have cached an older version. This can be done with the following command:
 
-			docker pull --platform=linux/arm64 goreleaser/goreleaser-cross:v1.26
+			docker pull --platform=linux/arm64 goreleaser/goreleaser-cross:v1.27
 
 		> **Note**
 		> Change --platform=linux/arm64 to your platform if you are not on ARM64.
