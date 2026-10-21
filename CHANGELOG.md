@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped to `Golang` `1.27`, this will pull `goreleaser/goreleaser-cross:v1.27` so expect some delays before your build starts.
 
+### Fixed
+
+- Fixed GitHub token validation rejecting valid tokens, most notably the GitHub Actions `GITHUB_TOKEN` (`ghs_` prefix) when running on CI. All GitHub token prefixes (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`, `github_pat_`) are now accepted and token length is no longer enforced as GitHub may change it.
+
 ## v0.16.0
 
 ### Fixed

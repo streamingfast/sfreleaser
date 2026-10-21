@@ -11,17 +11,18 @@ import (
 	"go.uber.org/zap"
 )
 
-// GitHub Token regexes parts
+// GitHub Token regexes parts, lengths are not enforced as GitHub explicitly states they
+// can change over time (and they did, GitHub Actions `GITHUB_TOKEN` grew longer).
 //
 // See https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-authentication-to-github#githubs-token-formats
-// See https://gist.github.com/magnetikonline/073afe7909ffdd6f10ef06a00bc3bc88#combined-together (credits to them for the actual regular expressions)
 var (
-	ghpPersonalLegacyTokenRegex = `ghp_[a-zA-Z0-9]{36}`
-	ghPersonalTokenRegex        = `github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}`
-	ghActionTokenRegex          = `v[0-9]\.[0-9a-f]{40}`
+	// ghp_ (personal classic), gho_ (OAuth), ghu_ (user-to-server), ghs_ (server-to-server, GitHub Actions `GITHUB_TOKEN`), ghr_ (refresh)
+	ghPrefixedTokenRegex = `gh[pousr]_[a-zA-Z0-9_.\-]+`
+	ghPersonalTokenRegex = `github_pat_[a-zA-Z0-9_]+`
+	ghLegacyTokenRegex   = `v[0-9]\.[0-9a-f]{40}`
 )
 
-var githubTokenRegex = regexp.MustCompile(fmt.Sprintf(`^\s*(%s|%s|%s)\s*$`, ghpPersonalLegacyTokenRegex, ghPersonalTokenRegex, ghActionTokenRegex))
+var githubTokenRegex = regexp.MustCompile(fmt.Sprintf(`^\s*(%s|%s|%s)\s*$`, ghPrefixedTokenRegex, ghPersonalTokenRegex, ghLegacyTokenRegex))
 
 func configureGitHubTokenEnvFile(releaseEnvFile string) {
 	zlog.Debug("verifying github token")
