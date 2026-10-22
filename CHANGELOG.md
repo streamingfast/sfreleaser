@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Added `--non-interactive` flag (config at `release.non-interactive`) to `sfreleaser release` for unattended runs like CI: the `<version>` argument becomes required, no prompt is ever shown and every question takes its safe answer, so the release stays in draft mode unless `--publish-now` is used. A branch that needs a `git pull` fails the release instead of prompting.
+
+- Added `--replace-existing-draft` flag (config at `release.replace-existing-draft`) to `sfreleaser release` to delete an existing draft GitHub release for the version without asking, a published release is never deleted.
+
+### Fixed
+
+- Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.
+
 ## v0.17.0
 
 ### Added

@@ -69,6 +69,8 @@ var ReleaseCmd = Command(release,
 		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.27", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
 		flags.Bool("no-binaries", false, "Skip building binaries completely; useful for library-only releases or when binaries are built through other means (cannot be used with library variant)")
 		flags.Bool("skip-changelog-validation", false, "Skip validation that changelog contains an entry for the release version")
+		flags.Bool("non-interactive", false, "Never prompt, every question takes its safe answer ('no'), the release is left in draft mode unless 'publish-now' is used and the <version> argument becomes required, meant for unattended runs like CI")
+		flags.Bool("replace-existing-draft", false, "Delete an existing draft GitHub release for the version without asking, a published release is never deleted")
 
 		// Brew Flags
 		flags.Bool("brew-disabled", false, "[Brew only] Disable Brew tap release completely, only applies for 'Golang'/'Application' types")
@@ -145,6 +147,8 @@ func release(cmd *cobra.Command, args []string) error {
 		zap.String("changelog_path", changelogPath),
 		zap.String("goreleaser_docker_image", goreleaserDockerImage),
 		zap.Bool("publish_now", publishNow),
+		zap.Bool("non_interactive", release.NonInteractive),
+		zap.Bool("replace_existing_draft", release.ReplaceExistingDraft),
 		zap.Strings("pre_build_hooks", preBuildHooks),
 		zap.String("upload", uploadSubstreamsSPKG),
 		zap.String("upload_substreams_spkg (deprecated)", uploadSubstreamsSPKG),
@@ -185,13 +189,13 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	ensureGitHubReleaseValid(global, version)
+	ensureGitHubReleaseValid(global, release)
 
 	delay := 3 * time.Second
 	fmt.Printf("Releasing %q (Draft: %t, Publish Now: %t) in %s...\n", version, !publishNow, publishNow, delay)
 	time.Sleep(delay)
 
-	ensureGitSync(global)
+	ensureGitSync(global, release)
 
 	buildDirectory := "build"
 	envFilePath := filepath.Join(buildDirectory, ".env.release")
@@ -298,12 +302,12 @@ func release(cmd *cobra.Command, args []string) error {
 		`, releaseURL, version, version))
 
 		fmt.Println()
-		if yes, _ := cli.PromptConfirm("View release right now?"); yes {
+		if release.confirm("View release right now?") {
 			reviewRelease(releaseURL)
 		}
 
 		fmt.Println()
-		if yes, _ := cli.PromptConfirm("Publish release right now?"); yes {
+		if release.confirm("Publish release right now?") {
 			publishReleaseNow(global, release)
 		} else {
 			// Mirrors what [publishReleaseNow] would have published, so that the user gets the

@@ -16,6 +16,16 @@ The `sfreleaser` usually simply wraps instructions for other tools, mainly:
 
 The `sfreleaser release` usually builds the necessary artifacts, configures `goreleaser`, uploads extra artifacts if necessary and performs the release on GitHub in draft mode. You have then the possibility to review it and publish it.
 
+### Running in CI
+
+Use `--non-interactive` to run `sfreleaser release` without a terminal, the `<version>` argument is then required and every question takes its safe answer, leaving the release in draft mode. Add `--replace-existing-draft` to delete an existing draft release for the same version instead of failing (a published release is never touched):
+
+```bash
+sfreleaser release v1.2.3 --non-interactive --replace-existing-draft
+```
+
+The `build/` directory `sfreleaser` writes to must be ignored by Git (in `.gitignore` or `.git/info/exclude`), otherwise the dirty check refuses to release.
+
 ### Development Version
 
 The `sfreleaser` binary uses a build injected value for the `version` which is later used to compare against `sfreleaser-min-version` check in the config file.

@@ -61,6 +61,23 @@ func promptVersion(changelogPath string, gitRemote string) string {
 	)
 }
 
+// confirm asks the user a yes/no question, unless the release is non-interactive in which
+// case no prompt is shown and the answer is always "no".
+func (m *ReleaseModel) confirm(label string) bool {
+	if m.NonInteractive {
+		fmt.Printf("%s No (non-interactive)\n", label)
+		return false
+	}
+
+	promptConfirm := m.promptConfirm
+	if promptConfirm == nil {
+		promptConfirm = cli.PromptConfirm
+	}
+
+	yes, _ := promptConfirm(label)
+	return yes
+}
+
 var cliVersionRegexp = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+`)
 
 func validVersion(in string) error {

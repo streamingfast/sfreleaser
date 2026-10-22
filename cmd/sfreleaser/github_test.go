@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/streamingfast/cli"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,6 +34,53 @@ func TestGitHubTokenRegex(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.valid, githubTokenRegex.MatchString(tt.token))
+		})
+	}
+}
+
+func Test_shouldDeleteExistingRelease(t *testing.T) {
+	answering := func(answer bool) func(string, ...cli.PromptOption) (bool, bool) {
+		return func(string, ...cli.PromptOption) (bool, bool) { return answer, true }
+	}
+
+	tests := []struct {
+		name    string
+		state   ghReleaseState
+		release func(t *testing.T) *ReleaseModel
+		want    bool
+	}{
+		{"draft, interactive, user says yes", ghReleaseDraft, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{promptConfirm: answering(true)}
+		}, true},
+		{"draft, interactive, user says no", ghReleaseDraft, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{promptConfirm: answering(false)}
+		}, false},
+		{"draft, non-interactive refuses", ghReleaseDraft, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{NonInteractive: true, promptConfirm: failingPromptConfirm(t)}
+		}, false},
+		{"draft, replace deletes without prompting", ghReleaseDraft, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{ReplaceExistingDraft: true, promptConfirm: failingPromptConfirm(t)}
+		}, true},
+		{"draft, non-interactive and replace deletes", ghReleaseDraft, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{NonInteractive: true, ReplaceExistingDraft: true, promptConfirm: failingPromptConfirm(t)}
+		}, true},
+		{"published, replace never deletes", ghReleaseExists, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{ReplaceExistingDraft: true, promptConfirm: failingPromptConfirm(t)}
+		}, false},
+		{"published, non-interactive and replace never deletes", ghReleaseExists, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{NonInteractive: true, ReplaceExistingDraft: true, promptConfirm: failingPromptConfirm(t)}
+		}, false},
+		{"published, interactive never prompts", ghReleaseExists, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{promptConfirm: failingPromptConfirm(t)}
+		}, false},
+		{"not found never deletes", ghReleaseNotFound, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{ReplaceExistingDraft: true, promptConfirm: failingPromptConfirm(t)}
+		}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, shouldDeleteExistingRelease(tt.state, tt.release(t)))
 		})
 	}
 }

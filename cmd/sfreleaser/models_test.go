@@ -194,3 +194,29 @@ func Test_parseRepository_RealWorldExamples(t *testing.T) {
 		})
 	}
 }
+
+func TestReleaseModel_validateForRelease(t *testing.T) {
+	tests := []struct {
+		name          string
+		release       *ReleaseModel
+		wantErrorLike string
+	}{
+		{"interactive without version", &ReleaseModel{}, ""},
+		{"interactive with version", &ReleaseModel{Version: "v1.2.3"}, ""},
+		{"non-interactive with version", &ReleaseModel{Version: "v1.2.3", NonInteractive: true}, ""},
+		{"non-interactive without version", &ReleaseModel{NonInteractive: true}, `The <version> argument is required when "--non-interactive" is used`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errors := tt.release.validateForRelease(&GlobalModel{Language: LanguageGolang, Variant: VariantApplication})
+
+			if tt.wantErrorLike == "" {
+				assert.Empty(t, errors)
+			} else {
+				require.Len(t, errors, 1)
+				assert.Contains(t, errors[0], tt.wantErrorLike)
+			}
+		})
+	}
+}

@@ -172,7 +172,18 @@ func (g *GlobalModel) ensureValidForRelease() {
 }
 
 func (m *ReleaseModel) ensureValidForRelease(global *GlobalModel) {
+	errors := m.validateForRelease(global)
+	if len(errors) != 0 {
+		cli.Quit("%s", strings.Join(errors, "\n"))
+	}
+}
+
+func (m *ReleaseModel) validateForRelease(global *GlobalModel) []string {
 	var errors []string
+
+	if m.NonInteractive && m.Version == "" {
+		errors = append(errors, `The <version> argument is required when "--non-interactive" is used (e.g. 'sfreleaser release v1.2.3 --non-interactive')`)
+	}
 
 	if m.NoBinaries && global.Variant == VariantLibrary {
 		errors = append(errors, `The "noBinaries" flag cannot be used with library variant as libraries already skip binary builds by default`)
@@ -184,9 +195,7 @@ func (m *ReleaseModel) ensureValidForRelease(global *GlobalModel) {
 		}
 	}
 
-	if len(errors) != 0 {
-		cli.Quit("%s", strings.Join(errors, "\n"))
-	}
+	return errors
 }
 
 type BuildModel struct {
@@ -226,6 +235,19 @@ type ReleaseModel struct {
 	// Note: This flag cannot be used with library variant as libraries already skip binary builds.
 	NoBinaries bool
 
+	// NonInteractive when set to true never prompts the user, every question that would
+	// have been asked takes its safe answer (always "no") and the <version> argument
+	// becomes required. Meant for unattended runs like CI.
+	NonInteractive bool
+
+	// ReplaceExistingDraft when set to true deletes an existing draft GitHub release for
+	// the version without asking. A published (non-draft) release is never deleted.
+	ReplaceExistingDraft bool
+
+	// promptConfirm is the function used to ask yes/no questions to the user, defaults
+	// to [cli.PromptConfirm] when nil, overridden in tests.
+	promptConfirm func(label string, opts ...cli.PromptOption) (answer bool, wasAnswered bool)
+
 	Brew *BrewReleaseModel
 
 	// Rust is populated only if config if of type Rust
@@ -249,6 +271,8 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 	))
 
 	m.NoBinaries = sflags.MustGetBool(cmd, "no-binaries")
+	m.NonInteractive = sflags.MustGetBool(cmd, "non-interactive")
+	m.ReplaceExistingDraft = sflags.MustGetBool(cmd, "replace-existing-draft")
 
 	tapRepo := sflags.MustGetString(cmd, "brew-tap-repo")
 
