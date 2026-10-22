@@ -58,23 +58,23 @@ func Test_shouldDeleteExistingRelease(t *testing.T) {
 		{"draft, non-interactive refuses", ghReleaseDraft, func(t *testing.T) *ReleaseModel {
 			return &ReleaseModel{NonInteractive: true, promptConfirm: failingPromptConfirm(t)}
 		}, false},
-		{"draft, replace deletes without prompting", ghReleaseDraft, func(t *testing.T) *ReleaseModel {
-			return &ReleaseModel{ReplaceExistingDraft: true, promptConfirm: failingPromptConfirm(t)}
+		{"draft, yes deletes without prompting", ghReleaseDraft, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{Yes: true, promptConfirm: failingPromptConfirm(t)}
 		}, true},
-		{"draft, non-interactive and replace deletes", ghReleaseDraft, func(t *testing.T) *ReleaseModel {
-			return &ReleaseModel{NonInteractive: true, ReplaceExistingDraft: true, promptConfirm: failingPromptConfirm(t)}
+		{"draft, non-interactive and yes deletes", ghReleaseDraft, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{NonInteractive: true, Yes: true, promptConfirm: failingPromptConfirm(t)}
 		}, true},
-		{"published, replace never deletes", ghReleaseExists, func(t *testing.T) *ReleaseModel {
-			return &ReleaseModel{ReplaceExistingDraft: true, promptConfirm: failingPromptConfirm(t)}
+		{"published, yes never deletes", ghReleaseExists, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{Yes: true, promptConfirm: failingPromptConfirm(t)}
 		}, false},
-		{"published, non-interactive and replace never deletes", ghReleaseExists, func(t *testing.T) *ReleaseModel {
-			return &ReleaseModel{NonInteractive: true, ReplaceExistingDraft: true, promptConfirm: failingPromptConfirm(t)}
+		{"published, non-interactive and yes never deletes", ghReleaseExists, func(t *testing.T) *ReleaseModel {
+			return &ReleaseModel{NonInteractive: true, Yes: true, promptConfirm: failingPromptConfirm(t)}
 		}, false},
 		{"published, interactive never prompts", ghReleaseExists, func(t *testing.T) *ReleaseModel {
 			return &ReleaseModel{promptConfirm: failingPromptConfirm(t)}
 		}, false},
 		{"not found never deletes", ghReleaseNotFound, func(t *testing.T) *ReleaseModel {
-			return &ReleaseModel{ReplaceExistingDraft: true, promptConfirm: failingPromptConfirm(t)}
+			return &ReleaseModel{Yes: true, promptConfirm: failingPromptConfirm(t)}
 		}, false},
 	}
 

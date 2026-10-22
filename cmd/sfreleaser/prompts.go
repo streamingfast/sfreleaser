@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"regexp"
+	"strconv"
 
 	"github.com/bobg/go-generics/v2/slices"
 	versioning "github.com/hashicorp/go-version"
@@ -61,9 +63,15 @@ func promptVersion(changelogPath string, gitRemote string) string {
 	)
 }
 
-// confirm asks the user a yes/no question, unless the release is non-interactive in which
-// case no prompt is shown and the answer is always "no".
+// confirm asks the user a yes/no question, unless --yes is set in which case the answer is
+// "yes", or the release is non-interactive in which case the answer is "no", both without
+// showing a prompt.
 func (m *ReleaseModel) confirm(label string) bool {
+	if m.Yes {
+		fmt.Printf("%s Yes (--yes)\n", label)
+		return true
+	}
+
 	if m.NonInteractive {
 		fmt.Printf("%s No (non-interactive)\n", label)
 		return false
@@ -90,4 +98,10 @@ func validVersion(in string) error {
 
 func validateVersionPrompt() cli.PromptOption {
 	return cli.WithPromptValidate("invalid version", validVersion)
+}
+
+// isCI reports whether the CI environment variable, set by most CI providers, is true.
+func isCI() bool {
+	ci, err := strconv.ParseBool(os.Getenv("CI"))
+	return err == nil && ci
 }

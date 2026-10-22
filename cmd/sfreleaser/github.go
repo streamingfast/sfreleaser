@@ -105,11 +105,6 @@ func shouldDeleteExistingRelease(state ghReleaseState, release *ReleaseModel) bo
 		return false
 	}
 
-	if release.ReplaceExistingDraft {
-		fmt.Println("Deleting existing draft release (--replace-existing-draft)")
-		return true
-	}
-
 	return release.confirm("Would you like to delete this existing draft release?")
 }
 

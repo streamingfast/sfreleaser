@@ -18,10 +18,10 @@ The `sfreleaser release` usually builds the necessary artifacts, configures `gor
 
 ### Running in CI
 
-Use `--non-interactive` to run `sfreleaser release` without a terminal, the `<version>` argument is then required and every question takes its safe answer, leaving the release in draft mode. Add `--replace-existing-draft` to delete an existing draft release for the same version instead of failing (a published release is never touched):
+`sfreleaser release` runs with `--non-interactive` automatically when the `CI` environment variable is true (set by GitHub Actions and most CI providers): the `<version>` argument is then required and every question is answered "no", leaving the release in draft mode. Add `--yes` to answer "yes" to every question instead, which deletes an existing draft for the same version, pulls a stale checkout and publishes the release right away (a published release is never deleted):
 
 ```bash
-sfreleaser release v1.2.3 --non-interactive --replace-existing-draft
+sfreleaser release v1.2.3 --non-interactive
 ```
 
 The `build/` directory `sfreleaser` writes to must be ignored by Git (in `.gitignore` or `.git/info/exclude`), otherwise the dirty check refuses to release.

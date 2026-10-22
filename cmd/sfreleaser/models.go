@@ -235,14 +235,13 @@ type ReleaseModel struct {
 	// Note: This flag cannot be used with library variant as libraries already skip binary builds.
 	NoBinaries bool
 
-	// NonInteractive when set to true never prompts the user, every question that would
-	// have been asked takes its safe answer (always "no") and the <version> argument
-	// becomes required. Meant for unattended runs like CI.
+	// NonInteractive when set to true never prompts the user, every question is answered
+	// "no" unless [Yes] is set and the <version> argument becomes required. Meant for
+	// unattended runs like CI.
 	NonInteractive bool
 
-	// ReplaceExistingDraft when set to true deletes an existing draft GitHub release for
-	// the version without asking. A published (non-draft) release is never deleted.
-	ReplaceExistingDraft bool
+	// Yes when set to true answers "yes" to every confirmation without asking.
+	Yes bool
 
 	// promptConfirm is the function used to ask yes/no questions to the user, defaults
 	// to [cli.PromptConfirm] when nil, overridden in tests.
@@ -272,7 +271,10 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 
 	m.NoBinaries = sflags.MustGetBool(cmd, "no-binaries")
 	m.NonInteractive = sflags.MustGetBool(cmd, "non-interactive")
-	m.ReplaceExistingDraft = sflags.MustGetBool(cmd, "replace-existing-draft")
+	if !cmd.Flags().Changed("non-interactive") && isCI() {
+		m.NonInteractive = true
+	}
+	m.Yes = sflags.MustGetBool(cmd, "yes")
 
 	tapRepo := sflags.MustGetString(cmd, "brew-tap-repo")
 
