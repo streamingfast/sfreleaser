@@ -157,7 +157,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 	cli.NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
 
-	verifyTools()
+	verifyTools(usesGoreleaser(global, release))
 
 	// Resolved before anything is built or released so that a missing/outdated Cargo is reported
 	// upfront instead of once the GitHub release has already been created.
@@ -249,14 +249,16 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Println()
-	fmt.Println("Creating temporary tag so that goreleaser can work properly")
-	createTemporaryTag(version)
+	if usesGoreleaser(global, release) {
+		fmt.Println()
+		fmt.Println("Creating temporary tag so that goreleaser can work properly")
+		createTemporaryTag(version)
 
-	cli.ExitHandler(deleteTagExitHandlerID, func(_ int) {
-		zlog.Debug("Deleting local temporary tag")
-		deleteTemporaryTag(version)
-	})
+		cli.ExitHandler(deleteTagExitHandlerID, func(_ int) {
+			zlog.Debug("Deleting local temporary tag")
+			deleteTemporaryTag(version)
+		})
+	}
 
 	gitHubRelease := &GitHubReleaseModel{
 		AllowDirty:           allowDirty,
@@ -362,24 +364,28 @@ func resolveAsset(asset string, global *GlobalModel, model map[string]any) strin
 	return global.ResolveFile(out.String())
 }
 
-func verifyTools() {
-	ensureCommandExist("docker", cli.Dedent(`
-		The 'docker' utility (https://docs.docker.com/get-docker/) is perform the
-		release.
+// verifyTools ensures the tools the release needs are available, Docker only being required
+// when Goreleaser runs.
+func verifyTools(needsDocker bool) {
+	if needsDocker {
+		ensureCommandExist("docker", cli.Dedent(`
+			The 'docker' utility (https://docs.docker.com/get-docker/) is perform the
+			release.
 
-		Install it via https://docs.docker.com/get-docker/. Ensure you have it enough
-		resources allocated to it. You should use the fastest available options for your
-		system. You should also allocate minimally 4 CPU and 8GiB of RAM.
-	`))
+			Install it via https://docs.docker.com/get-docker/. Ensure you have it enough
+			resources allocated to it. You should use the fastest available options for your
+			system. You should also allocate minimally 4 CPU and 8GiB of RAM.
+		`))
 
-	ensureCommandRunSuccesfully("docker info", cli.Dedent(`
-		Ensure that your Docker Engine is currently running, it seems it's not running
-		right now because the command 'docker info' failed.
+		ensureCommandRunSuccesfully("docker info", cli.Dedent(`
+			Ensure that your Docker Engine is currently running, it seems it's not running
+			right now because the command 'docker info' failed.
 
-		Try running the command 'docker info' locally to see the output. Ensure that it
-		execute successuflly and exits with a 0 exit code (run 'echo $?' right after
-		execution of the 'docker info' command to get its exit code).
-	`))
+			Try running the command 'docker info' locally to see the output. Ensure that it
+			execute successuflly and exits with a 0 exit code (run 'echo $?' right after
+			execution of the 'docker info' command to get its exit code).
+		`))
+	}
 
 	ensureCommandExist("gh", cli.Dedent(`
 		The GitHub CLI utility (https://cli.github.com/) is required to obtain

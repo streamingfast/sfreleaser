@@ -113,3 +113,50 @@ func newReleaseGithubArgs(customize func(*testing.T, *releaseGithubArgs)) func(t
 func ptr[T any](v T) *T {
 	return &v
 }
+
+func Test_usesGoreleaser(t *testing.T) {
+	tests := []struct {
+		name       string
+		language   Language
+		variant    Variant
+		noBinaries bool
+		want       bool
+	}{
+		{"golang application", LanguageGolang, VariantApplication, false, true},
+		{"golang application without binaries", LanguageGolang, VariantApplication, true, false},
+		{"golang library", LanguageGolang, VariantLibrary, false, false},
+		{"rust library", LanguageRust, VariantLibrary, false, false},
+		{"rust application", LanguageRust, VariantApplication, true, false},
+		{"rust substreams", LanguageRust, VariantSubstreams, false, false},
+		{"javascript library", LanguageJavaScript, VariantLibrary, false, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			global := &GlobalModel{Language: tt.language, Variant: tt.variant}
+			release := &ReleaseModel{NoBinaries: tt.noBinaries}
+			require.Equal(t, tt.want, usesGoreleaser(global, release))
+		})
+	}
+}
+
+func Test_findSubstreamsPackages(t *testing.T) {
+	root := t.TempDir()
+	for _, file := range []string{
+		"my-package-v1.0.0.spkg",
+		"nested/dir/other-v1.0.0.spkg",
+		"README.md",
+		".git/objects/ignored.spkg",
+	} {
+		path := filepath.Join(root, file)
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+		require.NoError(t, os.WriteFile(path, nil, 0o644))
+	}
+
+	packages, err := findSubstreamsPackages(root)
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		filepath.Join(root, "my-package-v1.0.0.spkg"),
+		filepath.Join(root, "nested/dir/other-v1.0.0.spkg"),
+	}, packages)
+}

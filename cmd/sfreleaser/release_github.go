@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -60,8 +62,20 @@ func buildArtifacts(global *GlobalModel, build *BuildModel, githubRelease *GitHu
 	run(goreleaseDockerCommand(global, githubRelease, "build", nil, goreleaserArguments)...)
 }
 
+// usesGoreleaser reports whether the release goes through Goreleaser, which is only the case
+// for a Go application building binaries. Every other project only needs a draft GitHub release,
+// created directly with 'gh' without Docker.
+func usesGoreleaser(global *GlobalModel, release *ReleaseModel) bool {
+	return global.Language == LanguageGolang && global.Variant == VariantApplication && !release.NoBinaries
+}
+
 func releaseGithub(global *GlobalModel, release *ReleaseModel, githubRelease *GitHubReleaseModel) {
 	if devSkipGoreleaser {
+		return
+	}
+
+	if !usesGoreleaser(global, release) {
+		releaseGithubDraft(global, release, githubRelease)
 		return
 	}
 
@@ -175,4 +189,56 @@ func collectGlobalGitIgnoreOverride(arguments []string, overrides []gitConfigOve
 		value: containerGlobalGitIgnorePath,
 	})
 	return arguments, overrides
+}
+
+// releaseGithubDraft creates the draft GitHub release with 'gh', the same release Goreleaser
+// creates for a project without binaries: titled after the version, pointing at the current
+// commit, with the release notes and, for a Substreams package, its '.spkg' file(s) attached.
+func releaseGithubDraft(global *GlobalModel, release *ReleaseModel, githubRelease *GitHubReleaseModel) {
+	commit := strings.TrimSpace(run("git rev-parse HEAD"))
+
+	args := []string{
+		"gh release create", release.Version,
+		"--repo", global.Owner + "/" + global.Project,
+		"--draft",
+		"--title", release.Version,
+		"--target", commit,
+		"--notes-file", "'" + githubRelease.ReleaseNotesPath + "'",
+	}
+
+	if global.Variant == VariantSubstreams {
+		packages, err := findSubstreamsPackages(".")
+		cli.NoError(err, "Unable to list Substreams packages to attach to the release")
+
+		for _, pkg := range packages {
+			args = append(args, "'"+pkg+"'")
+		}
+	}
+
+	fmt.Println()
+	fmt.Printf("Creating draft release %s with gh\n", release.Version)
+	run(args...)
+}
+
+// findSubstreamsPackages lists the '.spkg' files under root, the files Goreleaser attaches for
+// a Substreams release through its '**/*.spkg' extra files glob.
+func findSubstreamsPackages(root string) ([]string, error) {
+	var packages []string
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if entry.IsDir() && entry.Name() == ".git" {
+			return filepath.SkipDir
+		}
+
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".spkg") {
+			packages = append(packages, path)
+		}
+
+		return nil
+	})
+
+	return packages, err
 }
