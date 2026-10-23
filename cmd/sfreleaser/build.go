@@ -121,7 +121,7 @@ func build(cmd *cobra.Command, args []string) error {
 		return buildRustCrates(cmd, global, allowDirty, preBuildHooks)
 	}
 
-	verifyTools()
+	verifyTools(true)
 
 	// For simplicity in the code below
 	version := build.Version
