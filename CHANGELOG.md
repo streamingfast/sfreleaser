@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added global `--yes` flag (config at `global.yes`) to answer "yes" to every confirmation without asking, for `release` that deletes an existing draft release, pulls a stale checkout and publishes the release; a published release is never deleted.
 
+- Added `HOMEBREW_TAP_TOKEN` environment variable support: when set, the Homebrew tap is updated with that token instead of the release one, so CI can create the release with its own repository token and use a separate token for the tap.
+
 ### Fixed
 
 - Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.

@@ -49,6 +49,20 @@ func Test_releaseGithub(t *testing.T) {
 			}),
 			"goreleaser/app/readme_file_and_license.golden.yaml",
 		},
+		{
+			"brew pull request",
+			newReleaseGithubArgs(func(tt *testing.T, args *releaseGithubArgs) {
+				args.release.Brew = &BrewReleaseModel{PullRequest: true, TapRepoOwner: "owner", TapRepoName: "homebrew-tap"}
+			}),
+			"goreleaser/app/brew_pull_request.golden.yaml",
+		},
+		{
+			"brew pull request with tap token",
+			newReleaseGithubArgs(func(tt *testing.T, args *releaseGithubArgs) {
+				args.release.Brew = &BrewReleaseModel{PullRequest: true, TapRepoOwner: "owner", TapRepoName: "homebrew-tap", HasTapToken: true}
+			}),
+			"goreleaser/app/brew_pull_request_tap_token.golden.yaml",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

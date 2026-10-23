@@ -137,6 +137,9 @@ brews:
     repository:
       owner: {{ .release.Brew.TapRepoOwner }}
       name: {{ .release.Brew.TapRepoName }}
+{{- if .release.Brew.HasTapToken }}
+      token: '{{`{{ .Env.HOMEBREW_TAP_TOKEN }}`}}'
+{{- end }}
 {{- if .release.Brew.PullRequest }}
       pull_request:
         enabled: true

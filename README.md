@@ -26,6 +26,8 @@ sfreleaser release v1.2.3 --non-interactive
 
 The `build/` directory `sfreleaser` writes to must be ignored by Git (in `.gitignore` or `.git/info/exclude`), otherwise the dirty check refuses to release.
 
+The GitHub Actions `GITHUB_TOKEN` can only write to its own repository, not to the Homebrew tap. Set `HOMEBREW_TAP_TOKEN` to a token that can write to the tap; it is then used only for the tap. Like `GITHUB_TOKEN`, it is written to `build/.env.release`.
+
 ### Development Version
 
 The `sfreleaser` binary uses a build injected value for the `version` which is later used to compare against `sfreleaser-min-version` check in the config file.

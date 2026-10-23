@@ -285,6 +285,7 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 		PullRequest:  sflags.MustGetBool(cmd, "brew-pull-request"),
 		TapRepoOwner: tapRepoOwner,
 		TapRepoName:  tapRepoName,
+		HasTapToken:  homebrewTapToken() != "",
 	}
 
 	switch global.Language {
@@ -374,4 +375,8 @@ type BrewReleaseModel struct {
 	PullRequest  bool
 	TapRepoOwner string
 	TapRepoName  string
+
+	// HasTapToken is true when the HOMEBREW_TAP_TOKEN environment variable is set, the tap is
+	// then updated with that token instead of the one used for the release.
+	HasTapToken bool
 }

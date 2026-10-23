@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -92,4 +93,26 @@ func Test_shouldDeleteExistingRelease(t *testing.T) {
 			assert.Equal(t, tt.want, shouldDeleteExistingRelease(tt.state, tt.global(t)))
 		})
 	}
+}
+
+func Test_configureGitHubTokenEnvFile(t *testing.T) {
+	t.Run("release token only", func(t *testing.T) {
+		t.Setenv("GITHUB_TOKEN", "ghs_release")
+		t.Setenv(homebrewTapTokenEnv, "")
+
+		path := filepath.Join(t.TempDir(), ".env.release")
+		configureGitHubTokenEnvFile(path)
+
+		assert.Equal(t, "GITHUB_TOKEN=ghs_release", cli.ReadFile(path))
+	})
+
+	t.Run("release and tap tokens", func(t *testing.T) {
+		t.Setenv("GITHUB_TOKEN", "ghs_release")
+		t.Setenv(homebrewTapTokenEnv, "github_pat_tap")
+
+		path := filepath.Join(t.TempDir(), ".env.release")
+		configureGitHubTokenEnvFile(path)
+
+		assert.Equal(t, "GITHUB_TOKEN=ghs_release\nHOMEBREW_TAP_TOKEN=github_pat_tap", cli.ReadFile(path))
+	})
 }
