@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.
+- 
+### Changed
+
+- Only Go applications building binaries go through Goreleaser now. Every other project (Go libraries, Rust crates, Substreams packages, JavaScript) creates its draft GitHub release directly with `gh`, so releasing them no longer requires Docker nor pulls the `goreleaser-cross` image.
 
 ## v0.17.0
 
