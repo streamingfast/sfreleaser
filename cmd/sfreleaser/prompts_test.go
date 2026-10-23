@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestReleaseModel_confirm(t *testing.T) {
+func Test_confirm(t *testing.T) {
 	labels := []string{
 		"View release right now?",
 		"Publish release right now?",
@@ -17,26 +17,26 @@ func TestReleaseModel_confirm(t *testing.T) {
 	for _, label := range labels {
 		t.Run(label, func(t *testing.T) {
 			t.Run("non-interactive answers no without prompting", func(t *testing.T) {
-				release := &ReleaseModel{NonInteractive: true, promptConfirm: failingPromptConfirm(t)}
-				assert.False(t, release.confirm(label))
+				withPromptConfirm(t, failingPromptConfirm(t))
+				assert.False(t, confirm(&GlobalModel{NonInteractive: true}, label))
 			})
 
 			t.Run("yes answers yes without prompting", func(t *testing.T) {
+				withPromptConfirm(t, failingPromptConfirm(t))
 				for _, nonInteractive := range []bool{true, false} {
-					release := &ReleaseModel{Yes: true, NonInteractive: nonInteractive, promptConfirm: failingPromptConfirm(t)}
-					assert.True(t, release.confirm(label))
+					assert.True(t, confirm(&GlobalModel{Yes: true, NonInteractive: nonInteractive}, label))
 				}
 			})
 
 			t.Run("interactive forwards the user answer", func(t *testing.T) {
 				for _, answer := range []bool{true, false} {
 					prompted := ""
-					release := &ReleaseModel{promptConfirm: func(label string, _ ...cli.PromptOption) (bool, bool) {
+					withPromptConfirm(t, func(label string, _ ...cli.PromptOption) (bool, bool) {
 						prompted = label
 						return answer, true
-					}}
+					})
 
-					assert.Equal(t, answer, release.confirm(label))
+					assert.Equal(t, answer, confirm(&GlobalModel{}, label))
 					assert.Equal(t, label, prompted)
 				}
 			})
@@ -64,6 +64,13 @@ func Test_isCI(t *testing.T) {
 			assert.Equal(t, tt.want, isCI())
 		})
 	}
+}
+
+// withPromptConfirm replaces the prompt function for the duration of the test.
+func withPromptConfirm(t *testing.T, prompt func(string, ...cli.PromptOption) (bool, bool)) {
+	previous := promptConfirm
+	promptConfirm = prompt
+	t.Cleanup(func() { promptConfirm = previous })
 }
 
 func failingPromptConfirm(t *testing.T) func(string, ...cli.PromptOption) (bool, bool) {

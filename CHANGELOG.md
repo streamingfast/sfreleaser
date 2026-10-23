@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added `--non-interactive` flag (config at `release.non-interactive`) to `sfreleaser release` for unattended runs, enabled automatically when the `CI` environment variable is true: the `<version>` argument becomes required and every question is answered "no", so the release stays in draft mode unless `--publish-now` is used.
+- Added global `--non-interactive` flag (config at `global.non-interactive`) for unattended runs, enabled automatically when the `CI` environment variable is true: nothing is ever prompted, every question is answered "no" and the `<version>` argument of `release` becomes required, so a release stays in draft mode unless `--publish-now` is used.
 
-- Added `--yes` flag (config at `release.yes`) to `sfreleaser release` to answer "yes" to every question without asking: delete an existing draft release, pull a stale checkout and publish the release; a published release is never deleted.
+- Added global `--yes` flag (config at `global.yes`) to answer "yes" to every confirmation without asking, for `release` that deletes an existing draft release, pulls a stale checkout and publishes the release; a published release is never deleted.
 
 ### Fixed
 

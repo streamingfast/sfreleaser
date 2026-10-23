@@ -91,16 +91,16 @@ func deleteTemporaryTag(version string) {
 	runSilent("git tag -d", version)
 }
 
-func ensureGitSync(global *GlobalModel, release *ReleaseModel) {
+func ensureGitSync(global *GlobalModel) {
 	state := fetchGitSyncState()
 
 	switch state {
 	case gitSyncUpToDate:
 
 	case gitSyncNeedPull:
-		if release.confirm("It seems you need to 'git pull', do it now?") {
+		if confirm(global, "It seems you need to 'git pull', do it now?") {
 			run("git pull", resolveGitRemote(global))
-		} else if release.NonInteractive {
+		} else if global.NonInteractive {
 			cli.Quit("Your branch is behind its remote and needs a 'git pull', refusing to release a stale checkout in non-interactive mode, use --yes to pull it")
 		}
 

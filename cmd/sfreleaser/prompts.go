@@ -63,23 +63,21 @@ func promptVersion(changelogPath string, gitRemote string) string {
 	)
 }
 
+// promptConfirm asks the user a yes/no question, overridden in tests.
+var promptConfirm = cli.PromptConfirm
+
 // confirm asks the user a yes/no question, unless --yes is set in which case the answer is
-// "yes", or the release is non-interactive in which case the answer is "no", both without
+// "yes", or sfreleaser is non-interactive in which case the answer is "no", both without
 // showing a prompt.
-func (m *ReleaseModel) confirm(label string) bool {
-	if m.Yes {
+func confirm(global *GlobalModel, label string) bool {
+	if global.Yes {
 		fmt.Printf("%s Yes (--yes)\n", label)
 		return true
 	}
 
-	if m.NonInteractive {
+	if global.NonInteractive {
 		fmt.Printf("%s No (non-interactive)\n", label)
 		return false
-	}
-
-	promptConfirm := m.promptConfirm
-	if promptConfirm == nil {
-		promptConfirm = cli.PromptConfirm
 	}
 
 	yes, _ := promptConfirm(label)

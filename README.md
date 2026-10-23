@@ -18,7 +18,7 @@ The `sfreleaser release` usually builds the necessary artifacts, configures `gor
 
 ### Running in CI
 
-`sfreleaser release` runs with `--non-interactive` automatically when the `CI` environment variable is true (set by GitHub Actions and most CI providers): the `<version>` argument is then required and every question is answered "no", leaving the release in draft mode. Add `--yes` to answer "yes" to every question instead, which deletes an existing draft for the same version, pulls a stale checkout and publishes the release right away (a published release is never deleted):
+`sfreleaser` runs with the global `--non-interactive` flag automatically when the `CI` environment variable is true (set by GitHub Actions and most CI providers): the `<version>` argument is then required and every question is answered "no", leaving the release in draft mode. Add `--yes` to answer "yes" to every question instead, which deletes an existing draft for the same version, pulls a stale checkout and publishes the release right away (a published release is never deleted):
 
 ```bash
 sfreleaser release v1.2.3 --non-interactive

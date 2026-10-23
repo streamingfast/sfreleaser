@@ -37,6 +37,13 @@ type GlobalModel struct {
 
 	GitRemote string
 
+	// NonInteractive when set to true never prompts the user, every question is answered
+	// "no" unless [Yes] is set. Meant for unattended runs like CI.
+	NonInteractive bool
+
+	// Yes when set to true answers "yes" to every confirmation without asking.
+	Yes bool
+
 	// WorkingDirectory is the absolute path to directory all command should use
 	// when execution and is computed based on other configuration values found
 	// in this model.
@@ -120,7 +127,11 @@ func mustGetGlobal(cmd *cobra.Command) *GlobalModel {
 		Variant:   mustGetVariant(cmd),
 		Root:      sflags.MustGetString(cmd, "root"),
 		GitRemote: sflags.MustGetString(cmd, "git-remote"),
+		Yes:       sflags.MustGetBool(cmd, "yes"),
 	}
+
+	nonInteractive, nonInteractiveProvided := sflags.MustGetBoolProvided(cmd, "non-interactive")
+	global.NonInteractive = nonInteractive || (!nonInteractiveProvided && isCI())
 
 	global.WorkingDirectory = cli.WorkingDirectory()
 	if global.Root != "" {
@@ -181,7 +192,7 @@ func (m *ReleaseModel) ensureValidForRelease(global *GlobalModel) {
 func (m *ReleaseModel) validateForRelease(global *GlobalModel) []string {
 	var errors []string
 
-	if m.NonInteractive && m.Version == "" {
+	if global.NonInteractive && m.Version == "" {
 		errors = append(errors, `The <version> argument is required when "--non-interactive" is used (e.g. 'sfreleaser release v1.2.3 --non-interactive')`)
 	}
 
@@ -235,18 +246,6 @@ type ReleaseModel struct {
 	// Note: This flag cannot be used with library variant as libraries already skip binary builds.
 	NoBinaries bool
 
-	// NonInteractive when set to true never prompts the user, every question is answered
-	// "no" unless [Yes] is set and the <version> argument becomes required. Meant for
-	// unattended runs like CI.
-	NonInteractive bool
-
-	// Yes when set to true answers "yes" to every confirmation without asking.
-	Yes bool
-
-	// promptConfirm is the function used to ask yes/no questions to the user, defaults
-	// to [cli.PromptConfirm] when nil, overridden in tests.
-	promptConfirm func(label string, opts ...cli.PromptOption) (answer bool, wasAnswered bool)
-
 	Brew *BrewReleaseModel
 
 	// Rust is populated only if config if of type Rust
@@ -270,11 +269,6 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 	))
 
 	m.NoBinaries = sflags.MustGetBool(cmd, "no-binaries")
-	m.NonInteractive = sflags.MustGetBool(cmd, "non-interactive")
-	if !cmd.Flags().Changed("non-interactive") && isCI() {
-		m.NonInteractive = true
-	}
-	m.Yes = sflags.MustGetBool(cmd, "yes")
 
 	tapRepo := sflags.MustGetString(cmd, "brew-tap-repo")
 
