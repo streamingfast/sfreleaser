@@ -44,7 +44,7 @@ func configureGitHubTokenEnvFile(releaseEnvFile string) {
 		cli.Ensure(githubTokenRegex.MatchString(token), "GitHub token found through %s is invalid, should match %q", from, githubTokenRegex)
 		cli.WriteFile(releaseEnvFile, "GITHUB_TOKEN=%s", token)
 	} else {
-		message := fmt.Sprintf(dedent(`
+		message := dedent(`
 			A valid GitHub token is required to perform the release and we couldn't find
 			one through via:
 
@@ -66,7 +66,7 @@ func configureGitHubTokenEnvFile(releaseEnvFile string) {
 
 			The '<github_token>' value must be a valid GitHub personal access token
 			either fine-grained or classic, or a valid GitHub actions token.
-		`), globalGitHubTokenFile, globalGitHubTokenFile)
+		`, globalGitHubTokenFile, globalGitHubTokenFile)
 		cli.Quit("%s", message)
 	}
 }
@@ -88,13 +88,23 @@ func ensureGitHubReleaseValid(global *GlobalModel, version string) {
 
 	case ghReleaseDraft:
 		fmt.Printf("A draft release for %q already exists at %s\n", version, url)
-		if yes, _ := cli.PromptConfirm("Would you like to delete this existing draft release?"); yes {
+		if shouldDeleteExistingRelease(state, global) {
 			deleteExistingRelease(global, version)
 			fmt.Println()
 		} else {
 			cli.Quit("Refusing to continue since an existing draft release for this version already exists")
 		}
 	}
+}
+
+// shouldDeleteExistingRelease decides if the existing release for the version should be deleted
+// so the release can continue, only a draft release can ever be deleted.
+func shouldDeleteExistingRelease(state ghReleaseState, global *GlobalModel) bool {
+	if state != ghReleaseDraft {
+		return false
+	}
+
+	return confirm(global, "Would you like to delete this existing draft release?")
 }
 
 type ghReleaseState string

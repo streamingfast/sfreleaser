@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added global `--non-interactive` flag (config at `global.non-interactive`) for unattended runs, enabled automatically when the `CI` environment variable is true: nothing is ever prompted, every question is answered "no" and the `<version>` argument of `release` becomes required, so a release stays in draft mode unless `--publish-now` is used.
+
+- Added global `--yes` flag (config at `global.yes`) to answer "yes" to every confirmation without asking, for `release` that deletes an existing draft release, pulls a stale checkout and publishes the release; a published release is never deleted.
+
+### Fixed
+
+- Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.
+- 
 ### Changed
 
 - Only Go applications building binaries go through Goreleaser now. Every other project (Go libraries, Rust crates, Substreams packages, JavaScript) creates its draft GitHub release directly with `gh`, so releasing them no longer requires Docker nor pulls the `goreleaser-cross` image.

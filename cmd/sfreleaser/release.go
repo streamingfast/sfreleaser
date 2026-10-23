@@ -300,12 +300,12 @@ func release(cmd *cobra.Command, args []string) error {
 		`, releaseURL, version, version))
 
 		fmt.Println()
-		if yes, _ := cli.PromptConfirm("View release right now?"); yes {
+		if !global.NonInteractive && confirm(global, "View release right now?") {
 			reviewRelease(releaseURL)
 		}
 
 		fmt.Println()
-		if yes, _ := cli.PromptConfirm("Publish release right now?"); yes {
+		if confirm(global, "Publish release right now?") {
 			publishReleaseNow(global, release)
 		} else {
 			// Mirrors what [publishReleaseNow] would have published, so that the user gets the

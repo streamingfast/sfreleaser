@@ -37,6 +37,13 @@ type GlobalModel struct {
 
 	GitRemote string
 
+	// NonInteractive when set to true never prompts the user, every question is answered
+	// "no" unless [Yes] is set. Meant for unattended runs like CI.
+	NonInteractive bool
+
+	// Yes when set to true answers "yes" to every confirmation without asking.
+	Yes bool
+
 	// WorkingDirectory is the absolute path to directory all command should use
 	// when execution and is computed based on other configuration values found
 	// in this model.
@@ -120,7 +127,11 @@ func mustGetGlobal(cmd *cobra.Command) *GlobalModel {
 		Variant:   mustGetVariant(cmd),
 		Root:      sflags.MustGetString(cmd, "root"),
 		GitRemote: sflags.MustGetString(cmd, "git-remote"),
+		Yes:       sflags.MustGetBool(cmd, "yes"),
 	}
+
+	nonInteractive, nonInteractiveProvided := sflags.MustGetBoolProvided(cmd, "non-interactive")
+	global.NonInteractive = nonInteractive || (!nonInteractiveProvided && isCI())
 
 	global.WorkingDirectory = cli.WorkingDirectory()
 	if global.Root != "" {
@@ -172,7 +183,18 @@ func (g *GlobalModel) ensureValidForRelease() {
 }
 
 func (m *ReleaseModel) ensureValidForRelease(global *GlobalModel) {
+	errors := m.validateForRelease(global)
+	if len(errors) != 0 {
+		cli.Quit("%s", strings.Join(errors, "\n"))
+	}
+}
+
+func (m *ReleaseModel) validateForRelease(global *GlobalModel) []string {
 	var errors []string
+
+	if global.NonInteractive && m.Version == "" {
+		errors = append(errors, `The <version> argument is required when "--non-interactive" is used (e.g. 'sfreleaser release v1.2.3 --non-interactive')`)
+	}
 
 	if m.NoBinaries && global.Variant == VariantLibrary {
 		errors = append(errors, `The "noBinaries" flag cannot be used with library variant as libraries already skip binary builds by default`)
@@ -184,9 +206,7 @@ func (m *ReleaseModel) ensureValidForRelease(global *GlobalModel) {
 		}
 	}
 
-	if len(errors) != 0 {
-		cli.Quit("%s", strings.Join(errors, "\n"))
-	}
+	return errors
 }
 
 type BuildModel struct {

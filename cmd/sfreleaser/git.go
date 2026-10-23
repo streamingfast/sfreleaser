@@ -98,8 +98,10 @@ func ensureGitSync(global *GlobalModel) {
 	case gitSyncUpToDate:
 
 	case gitSyncNeedPull:
-		if yes, _ := cli.PromptConfirm("It seems you need to 'git pull', do it now?"); yes {
+		if confirm(global, "It seems you need to 'git pull', do it now?") {
 			run("git pull", resolveGitRemote(global))
+		} else if global.NonInteractive {
+			cli.Quit("Your branch is behind its remote and needs a 'git pull', refusing to release a stale checkout in non-interactive mode, use --yes to pull it")
 		}
 
 	case gitSyncNeedPush:

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/streamingfast/cli"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,6 +34,62 @@ func TestGitHubTokenRegex(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.valid, githubTokenRegex.MatchString(tt.token))
+		})
+	}
+}
+
+func Test_shouldDeleteExistingRelease(t *testing.T) {
+	answering := func(answer bool) func(string, ...cli.PromptOption) (bool, bool) {
+		return func(string, ...cli.PromptOption) (bool, bool) { return answer, true }
+	}
+
+	tests := []struct {
+		name   string
+		state  ghReleaseState
+		global func(t *testing.T) *GlobalModel
+		want   bool
+	}{
+		{"draft, interactive, user says yes", ghReleaseDraft, func(t *testing.T) *GlobalModel {
+			withPromptConfirm(t, answering(true))
+			return &GlobalModel{}
+		}, true},
+		{"draft, interactive, user says no", ghReleaseDraft, func(t *testing.T) *GlobalModel {
+			withPromptConfirm(t, answering(false))
+			return &GlobalModel{}
+		}, false},
+		{"draft, non-interactive refuses", ghReleaseDraft, func(t *testing.T) *GlobalModel {
+			withPromptConfirm(t, failingPromptConfirm(t))
+			return &GlobalModel{NonInteractive: true}
+		}, false},
+		{"draft, yes deletes without prompting", ghReleaseDraft, func(t *testing.T) *GlobalModel {
+			withPromptConfirm(t, failingPromptConfirm(t))
+			return &GlobalModel{Yes: true}
+		}, true},
+		{"draft, non-interactive and yes deletes", ghReleaseDraft, func(t *testing.T) *GlobalModel {
+			withPromptConfirm(t, failingPromptConfirm(t))
+			return &GlobalModel{NonInteractive: true, Yes: true}
+		}, true},
+		{"published, yes never deletes", ghReleaseExists, func(t *testing.T) *GlobalModel {
+			withPromptConfirm(t, failingPromptConfirm(t))
+			return &GlobalModel{Yes: true}
+		}, false},
+		{"published, non-interactive and yes never deletes", ghReleaseExists, func(t *testing.T) *GlobalModel {
+			withPromptConfirm(t, failingPromptConfirm(t))
+			return &GlobalModel{NonInteractive: true, Yes: true}
+		}, false},
+		{"published, interactive never prompts", ghReleaseExists, func(t *testing.T) *GlobalModel {
+			withPromptConfirm(t, failingPromptConfirm(t))
+			return &GlobalModel{}
+		}, false},
+		{"not found never deletes", ghReleaseNotFound, func(t *testing.T) *GlobalModel {
+			withPromptConfirm(t, failingPromptConfirm(t))
+			return &GlobalModel{Yes: true}
+		}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, shouldDeleteExistingRelease(tt.state, tt.global(t)))
 		})
 	}
 }

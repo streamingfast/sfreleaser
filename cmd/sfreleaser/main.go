@@ -73,6 +73,8 @@ func main() {
 			flags.String("root", "", "If defined, change the working directory of the process before proceeding with the release")
 			flags.String("sfreleaser-min-version", "", "If sets, will check that the version of sfreleaser is at least this version before attempting the build")
 			flags.String("git-remote", "origin", "The git remote to use for pushing the release and commits")
+			flags.Bool("non-interactive", false, "Never prompt, every question is answered 'no' (or 'yes' with --yes) and values that would be asked for must be provided, enabled automatically when the CI environment variable is true, meant for unattended runs")
+			flags.Bool("yes", false, "Answer 'yes' to every confirmation without asking, for 'release' that deletes an existing draft release, 'git pull' a stale checkout and publishes the release right now, a published release is never deleted")
 		}),
 	)
 }
