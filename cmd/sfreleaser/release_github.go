@@ -30,8 +30,9 @@ type gitConfigOverride struct {
 
 func buildArtifacts(global *GlobalModel, build *BuildModel, githubRelease *GitHubReleaseModel) {
 	releaseModel := &ReleaseModel{
-		Version: build.Version,
-		Brew:    &BrewReleaseModel{Disabled: true},
+		Version:     build.Version,
+		CgoDisabled: build.CgoDisabled,
+		Brew:        &BrewReleaseModel{Disabled: true},
 	}
 
 	if global.Language == LanguageRust {

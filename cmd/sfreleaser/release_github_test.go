@@ -63,6 +63,14 @@ func Test_releaseGithub(t *testing.T) {
 			}),
 			"goreleaser/app/brew_pull_request_tap_token.golden.yaml",
 		},
+		{
+			"cgo and checksums disabled",
+			newReleaseGithubArgs(func(tt *testing.T, args *releaseGithubArgs) {
+				args.release.CgoDisabled = true
+				args.release.ChecksumsDisabled = true
+			}),
+			"goreleaser/app/cgo_and_checksums_disabled.golden.yaml",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

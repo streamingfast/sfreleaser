@@ -53,6 +53,7 @@ var BuildCmd = Command(nil,
 		flags.StringArray("rust-crates", nil, "[Rust only] The list of crates to verify, defaults to the 'release.rust-crates' config value")
 		flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish', defaults to the 'release.rust-cargo-publish-args' config value")
 		flags.String("rust-cargo-publish-mode", "", "[Rust only] How the crates are published, defaults to the 'release.rust-cargo-publish-mode' config value")
+		flags.Bool("cgo-disabled", false, "Build the binaries with CGO_ENABLED=0, statically linked, also enabled by the 'release.cgo-disabled' config value")
 
 		// Flag specific to build
 		flags.Bool("all", false, "Build for all platforms and not your current machine")
