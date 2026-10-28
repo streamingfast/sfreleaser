@@ -15,11 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `HOMEBREW_TAP_TOKEN` environment variable support: when set, the Homebrew tap is updated with that token instead of the release one, so CI can create the release with its own repository token and use a separate token for the tap.
 
+- Added `release --cgo-disabled` (config at `release.cgo-disabled`, also honored by `build`) to build statically linked binaries with `CGO_ENABLED=0` instead of linking them dynamically against the `goreleaser-cross` image's libc.
+
+- Added `release --checksums-disabled` (config at `release.checksums-disabled`) to stop attaching `checksums.txt` to the release.
+
 ### Fixed
 
 - Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.
 - 
 ### Changed
+
+- Goreleaser releases of a version with a pre-release suffix (e.g. `v1.4.0-rc.1`) are now marked as pre-release on GitHub.
 
 - Only Go applications building binaries go through Goreleaser now. Every other project (Go libraries, Rust crates, Substreams packages, JavaScript) creates its draft GitHub release directly with `gh`, so releasing them no longer requires Docker nor pulls the `goreleaser-cross` image.
 

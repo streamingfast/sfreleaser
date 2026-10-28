@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/streamingfast/cli"
 	"github.com/streamingfast/cli/sflags"
 	"go.uber.org/zap"
@@ -214,11 +215,15 @@ type BuildModel struct {
 
 	All       bool
 	Platforms []string
+
+	// CgoDisabled builds the binaries with CGO_ENABLED=0, statically linked.
+	CgoDisabled bool
 }
 
 func (m *BuildModel) populate(cmd *cobra.Command) {
 	m.All = sflags.MustGetBool(cmd, "all")
 	m.Platforms = sflags.MustGetStringArray(cmd, "platform")
+	m.CgoDisabled = sflags.MustGetBool(cmd, "cgo-disabled") || viper.GetBool("release.cgo-disabled")
 
 	for i, platform := range m.Platforms {
 		m.Platforms[i] = strings.Replace(strings.ToLower(platform), "/", "-", 1)
@@ -246,6 +251,13 @@ type ReleaseModel struct {
 	// Note: This flag cannot be used with library variant as libraries already skip binary builds.
 	NoBinaries bool
 
+	// CgoDisabled builds the binaries with CGO_ENABLED=0, statically linked, instead of
+	// dynamically linked against the libc of the goreleaser-cross image.
+	CgoDisabled bool
+
+	// ChecksumsDisabled skips the 'checksums.txt' release asset.
+	ChecksumsDisabled bool
+
 	Brew *BrewReleaseModel
 
 	// Rust is populated only if config if of type Rust
@@ -269,6 +281,8 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 	))
 
 	m.NoBinaries = sflags.MustGetBool(cmd, "no-binaries")
+	m.CgoDisabled = sflags.MustGetBool(cmd, "cgo-disabled")
+	m.ChecksumsDisabled = sflags.MustGetBool(cmd, "checksums-disabled")
 
 	tapRepo := sflags.MustGetString(cmd, "brew-tap-repo")
 

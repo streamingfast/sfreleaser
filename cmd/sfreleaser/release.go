@@ -68,6 +68,8 @@ var ReleaseCmd = Command(release,
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
 		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.27", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
 		flags.Bool("no-binaries", false, "Skip building binaries completely; useful for library-only releases or when binaries are built through other means (cannot be used with library variant)")
+		flags.Bool("cgo-disabled", false, "Build the binaries with CGO_ENABLED=0, statically linked, instead of dynamically linked against the libc of the Goreleaser image")
+		flags.Bool("checksums-disabled", false, "Do not attach the 'checksums.txt' asset to the release")
 		flags.Bool("skip-changelog-validation", false, "Skip validation that changelog contains an entry for the release version")
 
 		// Brew Flags
