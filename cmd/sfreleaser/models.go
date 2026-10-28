@@ -218,12 +218,18 @@ type BuildModel struct {
 
 	// CgoDisabled builds the binaries with CGO_ENABLED=0, statically linked.
 	CgoDisabled bool
+
+	Builder Builder
+	// ZigPath overrides the zig binary of the native builder.
+	ZigPath string
 }
 
-func (m *BuildModel) populate(cmd *cobra.Command) {
+func (m *BuildModel) populate(cmd *cobra.Command, global *GlobalModel) {
 	m.All = sflags.MustGetBool(cmd, "all")
 	m.Platforms = sflags.MustGetStringArray(cmd, "platform")
 	m.CgoDisabled = sflags.MustGetBool(cmd, "cgo-disabled") || viper.GetBool("release.cgo-disabled")
+	m.Builder = mustGetBuilder(cmd)
+	m.ZigPath = zigPathValue(cmd, global)
 
 	for i, platform := range m.Platforms {
 		m.Platforms[i] = strings.Replace(strings.ToLower(platform), "/", "-", 1)
@@ -258,6 +264,11 @@ type ReleaseModel struct {
 	// ChecksumsDisabled skips the 'checksums.txt' release asset.
 	ChecksumsDisabled bool
 
+	// Builder builds the binaries of a Go application.
+	Builder Builder
+	// ZigPath overrides the zig binary of the native builder.
+	ZigPath string
+
 	Brew *BrewReleaseModel
 
 	// Rust is populated only if config if of type Rust
@@ -283,6 +294,8 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 	m.NoBinaries = sflags.MustGetBool(cmd, "no-binaries")
 	m.CgoDisabled = sflags.MustGetBool(cmd, "cgo-disabled")
 	m.ChecksumsDisabled = sflags.MustGetBool(cmd, "checksums-disabled")
+	m.Builder = mustGetBuilder(cmd)
+	m.ZigPath = zigPathValue(cmd, global)
 
 	tapRepo := sflags.MustGetString(cmd, "brew-tap-repo")
 
@@ -393,4 +406,20 @@ type BrewReleaseModel struct {
 	// HasTapToken is true when the HOMEBREW_TAP_TOKEN environment variable is set, the tap is
 	// then updated with that token instead of the one used for the release.
 	HasTapToken bool
+}
+
+// zigPathValue is the 'zig-path' flag as given, else the 'release.zig-path' config value, whose
+// relative path is resolved against the directory of the '.sfreleaser' file. A bare name, looked
+// up on PATH, and a path starting with '~' are kept as is.
+func zigPathValue(cmd *cobra.Command, global *GlobalModel) string {
+	if flag := cmd.Flags().Lookup("zig-path"); flag != nil && flag.Changed {
+		return flag.Value.String()
+	}
+
+	value := viper.GetString("release.zig-path")
+	if value == "" || filepath.IsAbs(value) || strings.HasPrefix(value, "~") || !strings.ContainsRune(value, filepath.Separator) {
+		return value
+	}
+
+	return global.ResolveFile(value)
 }

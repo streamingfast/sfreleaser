@@ -33,6 +33,23 @@ func homebrewTapToken() string {
 }
 
 func configureGitHubTokenEnvFile(releaseEnvFile string) {
+	content := fmt.Sprintf("GITHUB_TOKEN=%s", mustGitHubToken())
+	if tapToken := homebrewTapToken(); tapToken != "" {
+		content += fmt.Sprintf("\n%s=%s", homebrewTapTokenEnv, tapToken)
+	}
+
+	cli.WriteFile(releaseEnvFile, "%s", content)
+}
+
+// useGitHubTokenForGh makes every 'gh' call of this process authenticate with the release token,
+// as Goreleaser did, rather than with the account 'gh' is logged in as.
+func useGitHubTokenForGh() {
+	cli.NoError(os.Setenv("GH_TOKEN", mustGitHubToken()), "Unable to set GH_TOKEN")
+}
+
+// mustGitHubToken returns the token releases are made with, from the GITHUB_TOKEN environment
+// variable, else the global Goreleaser config file, and validates HOMEBREW_TAP_TOKEN when set.
+func mustGitHubToken() string {
 	zlog.Debug("verifying github token")
 	globalGitHubTokenFile := filepath.Join(cli.UserHomeDirectory(), ".config", "goreleaser", "github_token")
 
@@ -51,13 +68,11 @@ func configureGitHubTokenEnvFile(releaseEnvFile string) {
 	if token != "" {
 		cli.Ensure(githubTokenRegex.MatchString(token), "GitHub token found through %s is invalid, should match %q", from, githubTokenRegex)
 
-		content := fmt.Sprintf("GITHUB_TOKEN=%s", token)
 		if tapToken := homebrewTapToken(); tapToken != "" {
 			cli.Ensure(githubTokenRegex.MatchString(tapToken), "GitHub token found through environment variable %s is invalid, should match %q", homebrewTapTokenEnv, githubTokenRegex)
-			content += fmt.Sprintf("\n%s=%s", homebrewTapTokenEnv, tapToken)
 		}
 
-		cli.WriteFile(releaseEnvFile, "%s", content)
+		return token
 	} else {
 		message := dedent(`
 			A valid GitHub token is required to perform the release and we couldn't find
@@ -83,6 +98,7 @@ func configureGitHubTokenEnvFile(releaseEnvFile string) {
 			either fine-grained or classic, or a valid GitHub actions token.
 		`, globalGitHubTokenFile, globalGitHubTokenFile)
 		cli.Quit("%s", message)
+		return ""
 	}
 }
 

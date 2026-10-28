@@ -194,6 +194,35 @@ func doctor(cmd *cobra.Command, _ []string) error {
 
 		Note also that a file needed at packaging time must live inside the crate directory, a
 		crate cannot include files sitting outside of its own directory.
+
+		##
+		### dyld: duplicate linked dylib '/System/Library/Frameworks/CoreFoundation.framework/...' (native builder)
+		##
+
+		Go before 1.27 passes '-framework CoreFoundation' twice when linking a cgo darwin binary.
+		Apple's linker ignores the repeat but zig does not, and macOS refuses to start a binary
+		linking a library twice. The native builder routes darwin builds through a wrapper that
+		removes the repeat, and checks every darwin binary it builds for duplicates.
+
+		If you see it anyway, upgrade the project to Go 1.27 or later, and report the build
+		command so the wrapper can be fixed.
+
+		##
+		### error: unable to find system framework "CoreFoundation" or undefined symbol _CFStringCreateWithBytes (native builder)
+		##
+
+		zig cannot find the macOS SDK stubs, or is too old to read them. The native builder needs
+		zig 0.17.0: it uses a 'zig' on PATH only at that exact version, otherwise the copy it
+		downloads to its cache directory. Check what '--zig-path' (or 'release.zig-path') points
+		to, if set.
+
+		If the missing framework or header is not one Go itself needs (CoreFoundation, Security,
+		libresolv, libobjc), the project's cgo code needs more of the macOS SDK than the native
+		builder embeds: build it with '--builder=goreleaser-docker', whose image has the full SDK.
+
+		The stubs are written to the 'macos-sdk' folder of the sfreleaser cache directory
+		('~/Library/Caches/sfreleaser' on macOS, '~/.cache/sfreleaser' on Linux), deleting that
+		folder makes the next build write them again.
 	`))
 
 	return nil

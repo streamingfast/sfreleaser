@@ -31,6 +31,10 @@ var (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == zigCCShimCommand {
+		os.Exit(runZigCCShim(os.Args[2:]))
+	}
+
 	Run(
 		"sfreleaser",
 		"StreamingFast specific releaser tool for easier maintaining release process",

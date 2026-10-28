@@ -68,6 +68,8 @@ var ReleaseCmd = Command(release,
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
 		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.27", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
 		flags.Bool("no-binaries", false, "Skip building binaries completely; useful for library-only releases or when binaries are built through other means (cannot be used with library variant)")
+		flags.String("builder", "goreleaser-docker", "What builds the binaries of a Go application, 'goreleaser-docker' (Goreleaser in the goreleaser-cross image) or 'native' (go build with zig as the cgo cross-compiler, without Docker)")
+		flags.String("zig-path", "", "[native builder only] The zig binary to compile cgo code with, by default the pinned zig version is found on PATH or downloaded to the sfreleaser cache directory")
 		flags.Bool("cgo-disabled", false, "Build the binaries with CGO_ENABLED=0, statically linked, instead of dynamically linked against the libc of the Goreleaser image")
 		flags.Bool("checksums-disabled", false, "Do not attach the 'checksums.txt' asset to the release")
 		flags.Bool("skip-changelog-validation", false, "Skip validation that changelog contains an entry for the release version")
@@ -96,6 +98,7 @@ var ReleaseCmd = Command(release,
 
 		go func() {
 			<-sigs
+			stopInterruptible()
 			cli.Exit(1)
 		}()
 
@@ -159,7 +162,13 @@ func release(cmd *cobra.Command, args []string) error {
 
 	cli.NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
 
-	verifyTools(usesGoreleaser(global, release))
+	verifyTools(usesGoreleaser(global, release) && release.Builder != BuilderNative)
+	if usesGoreleaser(global, release) && release.Builder == BuilderNative {
+		ensureCommandExist("go", "The Go toolchain (https://go.dev/dl/) is required by the native builder.")
+
+		// Before the first 'gh' call, which checks for an existing release.
+		useGitHubTokenForGh()
+	}
 
 	// Resolved before anything is built or released so that a missing/outdated Cargo is reported
 	// upfront instead of once the GitHub release has already been created.
@@ -200,7 +209,9 @@ func release(cmd *cobra.Command, args []string) error {
 	releaseNotesPath := filepath.Join(buildDirectory, ".release_notes.md")
 
 	cli.NoError(os.MkdirAll(buildDirectory, os.ModePerm), "Unable to create build directory")
-	configureGitHubTokenEnvFile(envFilePath)
+	if !usesGoreleaser(global, release) || release.Builder != BuilderNative {
+		configureGitHubTokenEnvFile(envFilePath)
+	}
 	cli.WriteFile(releaseNotesPath, "%s", readReleaseNotes(changelogPath))
 
 	// By doing this after creating the build directory and release notes, we ensure
@@ -251,7 +262,7 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if usesGoreleaser(global, release) {
+	if usesGoreleaser(global, release) && release.Builder != BuilderNative {
 		fmt.Println()
 		fmt.Println("Creating temporary tag so that goreleaser can work properly")
 		createTemporaryTag(version)

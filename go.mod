@@ -16,6 +16,7 @@ require (
 	github.com/streamingfast/cli v0.0.4-0.20250815192146-d8a233ec3d0b
 	github.com/streamingfast/logging v0.0.0-20230608130331-f22c91403091
 	github.com/stretchr/testify v1.8.1
+	github.com/ulikunitz/xz v0.5.17
 	go.uber.org/zap v1.21.0
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 	gopkg.in/yaml.v3 v3.0.1
