@@ -15,15 +15,17 @@ import (
 	"strings"
 )
 
-// stubs are the files a Go cgo darwin link needs, relative to the SDK root: libSystem
-// (implicit), libresolv (net), CoreFoundation and Security (crypto/x509) and libobjc,
-// which CoreFoundation re-exports.
+// stubs are the files a Go cgo darwin build needs that zig does not ship, relative to the SDK
+// root: libSystem (implicit), libresolv (net), CoreFoundation and Security (crypto/x509),
+// libobjc, which CoreFoundation re-exports, and the mach_vm.h header of the cgo memory
+// collector of prometheus/client_golang, a dependency of most Go services.
 var stubs = []string{
 	"usr/lib/libSystem.B.tbd",
 	"usr/lib/libresolv.9.tbd",
 	"usr/lib/libobjc.A.tbd",
 	"System/Library/Frameworks/CoreFoundation.framework/CoreFoundation.tbd",
 	"System/Library/Frameworks/Security.framework/Security.tbd",
+	"usr/include/mach/mach_vm.h",
 }
 
 func main() {

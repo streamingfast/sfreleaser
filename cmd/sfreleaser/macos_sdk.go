@@ -14,9 +14,9 @@ import (
 
 //go:generate go run ./internal/macossdkgen -out macos_sdk
 
-// macosSDK holds the macOS SDK '.tbd' stubs darwin binaries are linked against by the
-// native builder: zig ships the macOS libc headers but not Apple's SDK libraries. They are
-// text files listing symbols, extracted from an osxcross image by 'go generate'.
+// macosSDK holds the parts of the macOS SDK the native builder needs for darwin binaries that
+// zig does not ship: the '.tbd' stubs of the libraries they link, text files listing symbols,
+// and a header. They are extracted from an osxcross image by 'go generate'.
 //
 //go:embed macos_sdk
 var macosSDK embed.FS
@@ -30,7 +30,7 @@ var macosSDKAliases = map[string]string{
 }
 
 // materializeMacOSSDK writes the embedded stubs under cacheRoot and returns the directory to
-// pass as zig's '--sysroot'. The directory is named after the content hash of the stubs, so
+// pass to zig as search paths. The directory is named after the content hash of the stubs, so
 // an sfreleaser embedding different stubs never reuses a stale copy, and an existing complete
 // copy is reused as is.
 func materializeMacOSSDK(cacheRoot string) (string, error) {
@@ -101,7 +101,7 @@ func materializeMacOSSDK(cacheRoot string) (string, error) {
 func macosSDKFiles() (map[string][]byte, string, error) {
 	files := map[string][]byte{}
 	err := fs.WalkDir(macosSDK, "macos_sdk", func(path string, entry fs.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".tbd") {
+		if err != nil || entry.IsDir() || path == "macos_sdk/VERSION" {
 			return err
 		}
 

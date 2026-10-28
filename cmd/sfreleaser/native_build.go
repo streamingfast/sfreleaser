@@ -85,7 +85,7 @@ type nativeToolchain struct {
 	Zig string
 	// ZigVersion is what 'zig version' prints.
 	ZigVersion string
-	// MacOSSDK is the sysroot holding the macOS SDK stubs, set when a darwin target is built.
+	// MacOSSDK is the directory holding the macOS SDK stubs, set when a darwin target is built.
 	MacOSSDK string
 	// Shim is the sfreleaser binary, which darwin targets go through as their C compiler, see
 	// [runZigCCShim].
@@ -101,35 +101,42 @@ func (t nativeTarget) env(cgo bool, toolchain nativeToolchain) ([]string, error)
 
 	env[2] = "CGO_ENABLED=1"
 
-	paths := []string{toolchain.Zig}
+	compiler := []string{toolchain.Zig}
+	flags := []string{"-target", t.ZigTarget}
 	if t.GOOS == "darwin" {
-		paths = append(paths, toolchain.Shim, toolchain.MacOSSDK)
+		compiler = []string{toolchain.Shim, zigCCShimCommand, toolchain.Zig}
+		// The SDK stubs are given as plain search paths rather than '--sysroot', which zig would
+		// also prefix the project's own '-L' paths with, breaking prebuilt libraries such as
+		// wasmtime-go's. The headers come after zig's own, only filling in the ones it lacks.
+		flags = append(flags,
+			"-F"+filepath.Join(toolchain.MacOSSDK, "System", "Library", "Frameworks"),
+			"-L"+filepath.Join(toolchain.MacOSSDK, "usr", "lib"),
+			"-idirafter", filepath.Join(toolchain.MacOSSDK, "usr", "include"),
+		)
 	}
 
-	quoted := map[string]string{}
-	for _, path := range paths {
-		value, err := quoteCompilerArg(path)
+	var quoted []string
+	for _, arg := range append(compiler, flags...) {
+		value, err := quoteCompilerArg(arg)
 		if err != nil {
 			return nil, err
 		}
-		quoted[path] = value
+		quoted = append(quoted, value)
+	}
+	compilerArgs, flagArgs := quoted[:len(compiler)], quoted[len(compiler):]
+
+	cc := strings.Join(append(append(append([]string{}, compilerArgs...), "cc"), flagArgs...), " ")
+	cxx := strings.Join(append(append(append([]string{}, compilerArgs...), "c++"), flagArgs...), " ")
+
+	env = append(env, "CC="+cc, "CXX="+cxx)
+	if t.GOOS == "linux" {
+		// zig links LLVM's runtime instead of GCC's libgcc, prebuilt libraries built against the
+		// latter, Rust ones such as wasmtime-go's, need its unwinder for __register_frame and
+		// _Unwind_Backtrace. Static, only what is used ends up in the binary.
+		env = append(env, "CGO_LDFLAGS=-O2 -g -lunwind")
 	}
 
-	compiler := []string{quoted[toolchain.Zig]}
-	if t.GOOS == "darwin" {
-		compiler = []string{quoted[toolchain.Shim], zigCCShimCommand, quoted[toolchain.Zig]}
-	}
-
-	flags := []string{"-target", t.ZigTarget}
-	if t.GOOS == "darwin" {
-		// Without the sysroot prefix, zig adds it itself.
-		flags = append(flags, "--sysroot", quoted[toolchain.MacOSSDK], "-F/System/Library/Frameworks", "-L/usr/lib")
-	}
-
-	cc := strings.Join(append(append(append([]string{}, compiler...), "cc"), flags...), " ")
-	cxx := strings.Join(append(append(append([]string{}, compiler...), "c++"), flags...), " ")
-
-	return append(env, "CC="+cc, "CXX="+cxx), nil
+	return env, nil
 }
 
 // quoteCompilerArg quotes a path for the CC and CXX variables, which Go splits on spaces

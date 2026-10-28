@@ -216,9 +216,10 @@ func doctor(cmd *cobra.Command, _ []string) error {
 		downloads to its cache directory. Check what '--zig-path' (or 'release.zig-path') points
 		to, if set.
 
-		If the missing framework or header is not one Go itself needs (CoreFoundation, Security,
-		libresolv, libobjc), the project's cgo code needs more of the macOS SDK than the native
-		builder embeds: build it with '--builder=goreleaser-docker', whose image has the full SDK.
+		If the missing framework or header is not one the native builder embeds (CoreFoundation,
+		Security, libresolv, libobjc and the mach/mach_vm.h header), the project's cgo code needs
+		more of the macOS SDK: build it with '--builder=goreleaser-docker', whose image has the
+		full SDK.
 
 		The stubs are written to the 'macos-sdk' folder of the sfreleaser cache directory
 		('~/Library/Caches/sfreleaser' on macOS, '~/.cache/sfreleaser' on Linux), deleting that

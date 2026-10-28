@@ -100,12 +100,13 @@ func Test_nativeTarget_env(t *testing.T) {
 		"GOOS=linux", "GOARCH=arm64", "CGO_ENABLED=1",
 		"CC=/cache/zig cc -target aarch64-linux-gnu.2.17",
 		"CXX=/cache/zig c++ -target aarch64-linux-gnu.2.17",
+		"CGO_LDFLAGS=-O2 -g -lunwind",
 	}, env("linux-arm64", true))
 
 	assert.Equal(t, []string{
 		"GOOS=darwin", "GOARCH=arm64", "CGO_ENABLED=1",
-		"CC=/bin/sfreleaser __zig-cc-shim /cache/zig cc -target aarch64-macos.11.0 --sysroot '/cache/macos sdk' -F/System/Library/Frameworks -L/usr/lib",
-		"CXX=/bin/sfreleaser __zig-cc-shim /cache/zig c++ -target aarch64-macos.11.0 --sysroot '/cache/macos sdk' -F/System/Library/Frameworks -L/usr/lib",
+		"CC=/bin/sfreleaser __zig-cc-shim /cache/zig cc -target aarch64-macos.11.0 '-F/cache/macos sdk/System/Library/Frameworks' '-L/cache/macos sdk/usr/lib' -idirafter '/cache/macos sdk/usr/include'",
+		"CXX=/bin/sfreleaser __zig-cc-shim /cache/zig c++ -target aarch64-macos.11.0 '-F/cache/macos sdk/System/Library/Frameworks' '-L/cache/macos sdk/usr/lib' -idirafter '/cache/macos sdk/usr/include'",
 	}, env("darwin-arm64", true))
 
 	_, err := target("linux-amd64").env(true, nativeToolchain{Zig: `/it's "quoted"/zig`})
@@ -188,6 +189,7 @@ func Test_materializeMacOSSDK(t *testing.T) {
 		"usr/lib/libobjc.A.tbd",
 		"System/Library/Frameworks/CoreFoundation.framework/CoreFoundation.tbd",
 		"System/Library/Frameworks/Security.framework/Security.tbd",
+		"usr/include/mach/mach_vm.h",
 	} {
 		assert.FileExists(t, filepath.Join(root, name))
 	}
@@ -203,7 +205,9 @@ func Test_materializeMacOSSDK(t *testing.T) {
 	assert.Equal(t, root, again)
 }
 
-// Test_nativeBuild_cgo builds a cgo program with C and C++ code for every target, it needs
+// Test_nativeBuild_cgo builds cgo programs for every target: one with C and C++ code, macOS SDK
+// headers zig lacks and the stdlib parts linking Apple frameworks, one linking unwinder
+// functions without C++. It needs
 // zig (found on PATH at the pinned version, or downloaded), so it only runs when
 // SFRELEASER_NATIVE_INTEGRATION=true.
 func Test_nativeBuild_cgo(t *testing.T) {
@@ -243,6 +247,17 @@ func Test_nativeBuild_cgo(t *testing.T) {
 			assert.NoError(t, checkNoDuplicateDylibs(path), target.ID)
 		}
 	}
+
+	// C only, without C++, like a Go program linking a prebuilt Rust library: nothing pulls in an
+	// unwinder, the builder has to.
+	t.Chdir(filepath.Join("..", "unwind"))
+	_, err = nativeBuild(t.Context(), nativeBuildOptions{
+		Binary:    "unwind",
+		Version:   "v1.2.3",
+		Targets:   []nativeTarget{nativeTargetByID("linux-amd64"), nativeTargetByID("linux-arm64")},
+		OutputDir: t.TempDir(),
+	})
+	assert.NoError(t, err)
 }
 
 // machoMinOS is the minimum macOS version of a binary, from its LC_BUILD_VERSION load command.
