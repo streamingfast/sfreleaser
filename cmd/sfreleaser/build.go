@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -53,6 +55,8 @@ var BuildCmd = Command(nil,
 		flags.StringArray("rust-crates", nil, "[Rust only] The list of crates to verify, defaults to the 'release.rust-crates' config value")
 		flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish', defaults to the 'release.rust-cargo-publish-args' config value")
 		flags.String("rust-cargo-publish-mode", "", "[Rust only] How the crates are published, defaults to the 'release.rust-cargo-publish-mode' config value")
+		flags.String("builder", "", "What builds the binaries of a Go application, 'goreleaser-docker' or 'native', defaults to the 'release.builder' config value, else 'goreleaser-docker'")
+		flags.String("zig-path", "", "[native builder only] The zig binary to compile cgo code with, by default the pinned zig version is found on PATH or downloaded to the sfreleaser cache directory")
 		flags.Bool("cgo-disabled", false, "Build the binaries with CGO_ENABLED=0, statically linked, also enabled by the 'release.cgo-disabled' config value")
 
 		// Flag specific to build
@@ -65,6 +69,7 @@ var BuildCmd = Command(nil,
 
 		go func() {
 			<-sigs
+			stopInterruptible()
 			cli.Exit(1)
 		}()
 
@@ -102,7 +107,7 @@ func build(cmd *cobra.Command, args []string) error {
 	goreleaserDockerImage := sflags.MustGetString(cmd, "goreleaser-docker-image")
 	preBuildHooks := sflags.MustGetStringArray(cmd, "pre-build-hooks")
 
-	build.populate(cmd)
+	build.populate(cmd, global)
 
 	zlog.Debug("starting 'sfreleaser build'",
 		zap.Inline(global),
@@ -122,7 +127,22 @@ func build(cmd *cobra.Command, args []string) error {
 		return buildRustCrates(cmd, global, allowDirty, preBuildHooks)
 	}
 
-	verifyTools(true)
+	var targets []nativeTarget
+	if build.Builder == BuilderNative {
+		cli.Ensure(global.Language == LanguageGolang, "The native builder only builds Go projects, use '--builder=goreleaser-docker' for this project")
+
+		if global.Variant == VariantApplication {
+			ensureCommandExist("go", "The Go toolchain (https://go.dev/dl/) is required by the native builder.")
+
+			// Before the hooks run, so that a wrong platform fails fast.
+			var err error
+			if targets, err = selectNativeTargets(build.All, build.Platforms, runtime.GOOS, runtime.GOARCH); err != nil {
+				return err
+			}
+		}
+	} else {
+		verifyTools(true)
+	}
 
 	// For simplicity in the code below
 	version := build.Version
@@ -132,7 +152,9 @@ func build(cmd *cobra.Command, args []string) error {
 	envFilePath := filepath.Join(buildDirectory, ".env.release")
 
 	cli.NoError(os.MkdirAll(buildDirectory, os.ModePerm), "Unable to create build directory")
-	configureGitHubTokenEnvFile(envFilePath)
+	if build.Builder != BuilderNative {
+		configureGitHubTokenEnvFile(envFilePath)
+	}
 
 	// By doing this after creating the build directory and release notes, we ensure
 	// that those are ignored, the user will need to ignore them to process (or --allow-dirty).
@@ -144,6 +166,17 @@ func build(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 		fmt.Printf("Executing %d pre-build hook(s)\n", len(preBuildHooks))
 		executeHooks(preBuildHooks, buildDirectory, global, &ReleaseModel{Version: version})
+	}
+
+	if build.Builder == BuilderNative {
+		// Like Goreleaser's library config, which skips every build.
+		if global.Variant != VariantApplication {
+			fmt.Println()
+			fmt.Println("Go libraries have no binaries to build")
+			return nil
+		}
+
+		return buildNativeArtifacts(global, build, targets)
 	}
 
 	if version != "" {
@@ -291,4 +324,30 @@ func selectSubstreamsPackageForRelease(version string) (string, error) {
 	}
 
 	return "", fmt.Errorf("multiple .spkg files match version %s, cannot determine which to use: %v", version, matchedFiles)
+}
+
+// buildNativeArtifacts builds the selected binaries with the native builder into
+// 'build/dist/<target>/<binary>'.
+func buildNativeArtifacts(global *GlobalModel, build *BuildModel, targets []nativeTarget) error {
+	// Like Goreleaser: a versioned build stamps the version without its 'v', a snapshot the
+	// latest tag as is.
+	version := strings.TrimPrefix(build.Version, "v")
+	if version == "" {
+		version = nativeSnapshotVersion()
+	}
+
+	fmt.Println()
+	fmt.Printf("Building %d target(s) with the native builder\n", len(targets))
+
+	return runInterruptible(func(ctx context.Context) error {
+		_, err := nativeBuild(ctx, nativeBuildOptions{
+			Binary:      global.Binary,
+			Version:     version,
+			CgoDisabled: build.CgoDisabled,
+			Targets:     targets,
+			OutputDir:   filepath.Join("build", "dist"),
+			ZigPath:     build.ZigPath,
+		})
+		return err
+	})
 }

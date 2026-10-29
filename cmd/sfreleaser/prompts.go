@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/bobg/go-generics/v2/slices"
 	versioning "github.com/hashicorp/go-version"
@@ -87,6 +88,10 @@ func confirm(global *GlobalModel, label string) bool {
 var cliVersionRegexp = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+`)
 
 func validVersion(in string) error {
+	if strings.ContainsAny(in, " \t\r\n") {
+		return fmt.Errorf("version %q must not contain whitespace", in)
+	}
+
 	if !cliVersionRegexp.MatchString(in) {
 		return fmt.Errorf(`version %q must of the form "^v{major}.{minor}.{patch}" (end of input is free-form)`, in)
 	}

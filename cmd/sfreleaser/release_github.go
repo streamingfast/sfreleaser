@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -77,6 +80,11 @@ func releaseGithub(global *GlobalModel, release *ReleaseModel, githubRelease *Gi
 
 	if !usesGoreleaser(global, release) {
 		releaseGithubDraft(global, release, githubRelease)
+		return
+	}
+
+	if release.Builder == BuilderNative {
+		releaseGithubNative(global, release, githubRelease)
 		return
 	}
 
@@ -193,9 +201,10 @@ func collectGlobalGitIgnoreOverride(arguments []string, overrides []gitConfigOve
 }
 
 // releaseGithubDraft creates the draft GitHub release with 'gh', the same release Goreleaser
-// creates for a project without binaries: titled after the version, pointing at the current
-// commit, with the release notes and, for a Substreams package, its '.spkg' file(s) attached.
-func releaseGithubDraft(global *GlobalModel, release *ReleaseModel, githubRelease *GitHubReleaseModel) {
+// creates: titled after the version, pointing at the current commit, marked as pre-release for
+// a pre-release version, with the release notes, the given assets and, for a Substreams
+// package, its '.spkg' file(s) attached.
+func releaseGithubDraft(global *GlobalModel, release *ReleaseModel, githubRelease *GitHubReleaseModel, assets ...string) {
 	commit := strings.TrimSpace(run("git rev-parse HEAD"))
 
 	args := []string{
@@ -205,6 +214,14 @@ func releaseGithubDraft(global *GlobalModel, release *ReleaseModel, githubReleas
 		"--title", release.Version,
 		"--target", commit,
 		"--notes-file", "'" + githubRelease.ReleaseNotesPath + "'",
+	}
+
+	if isPrereleaseVersion(release.Version) {
+		args = append(args, "--prerelease")
+	}
+
+	for _, asset := range assets {
+		args = append(args, "'"+asset+"'")
 	}
 
 	if global.Variant == VariantSubstreams {
@@ -242,4 +259,95 @@ func findSubstreamsPackages(root string) ([]string, error) {
 	})
 
 	return packages, err
+}
+
+// releaseGithubNative builds the binaries with the native builder, packages them as Goreleaser
+// did and creates the draft release with them, then updates the Homebrew formula unless
+// disabled.
+func releaseGithubNative(global *GlobalModel, release *ReleaseModel, githubRelease *GitHubReleaseModel) {
+	outputDir := filepath.Join("build", "dist")
+
+	fmt.Println()
+	fmt.Printf("Building %d target(s) with the native builder\n", len(nativeTargets))
+	var binaries map[string]string
+	err := runInterruptible(func(ctx context.Context) (err error) {
+		binaries, err = nativeBuild(ctx, nativeBuildOptions{
+			Binary: global.Binary,
+			// Goreleaser stamped the version without its 'v'.
+			Version:     strings.TrimPrefix(release.Version, "v"),
+			CgoDisabled: release.CgoDisabled,
+			Targets:     nativeTargets,
+			OutputDir:   outputDir,
+			ZigPath:     release.ZigPath,
+		})
+		return err
+	})
+	cli.NoError(err, "Unable to build the binaries")
+
+	var files []string
+	for _, file := range []*string{release.ReadmeRelativePath, release.LicenseRelativePath} {
+		if file != nil {
+			files = append(files, *file)
+		}
+	}
+	if len(files) == 0 {
+		files = defaultArchiveFiles(".")
+	}
+
+	archives, err := packageNativeArchives(nativePackageOptions{
+		Project:   global.Project,
+		Binary:    global.Binary,
+		Binaries:  binaries,
+		Files:     files,
+		ModTime:   nativeArchiveModTime(),
+		OutputDir: outputDir,
+	})
+	cli.NoError(err, "Unable to package the binaries")
+
+	var assets []string
+	for _, archive := range archives {
+		assets = append(assets, archive.Path)
+	}
+
+	if !release.ChecksumsDisabled {
+		checksums := filepath.Join(outputDir, "checksums.txt")
+		cli.NoError(writeChecksums(checksums, archives), "Unable to write %q", checksums)
+		assets = append(assets, checksums)
+	}
+
+	releaseGithubDraft(global, release, githubRelease, assets...)
+
+	if !release.Brew.Disabled {
+		cli.NoError(publishBrewFormula(global, release, archives), "Unable to update the Homebrew formula")
+	}
+}
+
+// isPrereleaseVersion reports whether version has a semver pre-release suffix, such as
+// 'v1.2.0-rc.1', the versions Goreleaser's 'prerelease: auto' marked as pre-release.
+func isPrereleaseVersion(version string) bool {
+	core, _, _ := strings.Cut(strings.TrimPrefix(version, "v"), "+")
+	return strings.Contains(core, "-")
+}
+
+// defaultArchiveFiles are the files of root Goreleaser archived next to the binary when the
+// project had neither README nor LICENSE: its license, readme and changelog files, whatever
+// their case.
+func defaultArchiveFiles(root string) []string {
+	found := map[string]bool{}
+	for _, pattern := range []string{"license*", "LICENSE*", "readme*", "README*", "changelog*", "CHANGELOG*"} {
+		matches, _ := filepath.Glob(filepath.Join(root, pattern))
+		for _, match := range matches {
+			if info, err := os.Stat(match); err == nil && info.Mode().IsRegular() {
+				found[filepath.Base(match)] = true
+			}
+		}
+	}
+
+	files := make([]string, 0, len(found))
+	for file := range found {
+		files = append(files, file)
+	}
+	sort.Strings(files)
+
+	return files
 }

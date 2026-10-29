@@ -19,13 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `release --checksums-disabled` (config at `release.checksums-disabled`) to stop attaching `checksums.txt` to the release.
 
+- Added `--builder=native` (config at `release.builder`) to `build` and `release`, which builds Go applications with `go build` and zig as the cgo cross-compiler instead of Goreleaser in the `goreleaser-cross` Docker image, so no Docker is needed. zig is downloaded and cached on first use (or taken from `PATH`, or `--zig-path`, config at `release.zig-path`), and the macOS SDK stubs darwin binaries need are embedded. `release` packages the same archives and `checksums.txt` Goreleaser did, creates the draft release with `gh` and updates the Homebrew formula on the same branch and file as Goreleaser; the formula commit is authored by the release token's account instead of `goreleaser`, and the pull request body credits sfreleaser. Darwin binaries need macOS 11 or later, linux ones glibc 2.17. The embedded macOS SDK only has the stubs Go itself links and the `mach/mach_vm.h` header `prometheus/client_golang` needs, so cgo code using other Apple headers or frameworks needs `goreleaser-docker`. `goreleaser-docker` stays the default.
+
 ### Fixed
 
 - Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.
-- 
+
 ### Changed
 
-- Goreleaser releases of a version with a pre-release suffix (e.g. `v1.4.0-rc.1`) are now marked as pre-release on GitHub.
+- Releases of a version with a pre-release suffix (e.g. `v1.4.0-rc.1`) are now marked as pre-release on GitHub, whether created by Goreleaser or with `gh`.
 
 - Only Go applications building binaries go through Goreleaser now. Every other project (Go libraries, Rust crates, Substreams packages, JavaScript) creates its draft GitHub release directly with `gh`, so releasing them no longer requires Docker nor pulls the `goreleaser-cross` image.
 

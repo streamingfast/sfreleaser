@@ -28,6 +28,18 @@ The `build/` directory `sfreleaser` writes to must be ignored by Git (in `.gitig
 
 The GitHub Actions `GITHUB_TOKEN` can only write to its own repository, not to the Homebrew tap. Set `HOMEBREW_TAP_TOKEN` to a token that can write to the tap; it is then used only for the tap. Like `GITHUB_TOKEN`, it is written to `build/.env.release`.
 
+### Native builder
+
+`--builder=native` (config at `release.builder`, honored by `build` and `release`) builds the binaries of a Go application with `go build` directly, without Docker nor the `goreleaser-cross` image. Cgo code is cross-compiled with [zig](https://ziglang.org): the pinned zig version is used from `PATH` when it is the one installed, otherwise it is downloaded once to the sfreleaser cache directory (`--zig-path`, config at `release.zig-path`, points to another binary). The macOS SDK stubs darwin binaries link against are embedded in `sfreleaser`, and written to the same cache directory. With `cgo-disabled`, zig is not needed at all.
+
+The binaries are written to `build/dist/<os>-<arch>/<binary>`. Linux binaries require glibc 2.17 or later, darwin ones macOS 11 or later. The build does not see the host's C flags, include and library paths, `go env -w` settings nor `go.work`, as with Goreleaser's container.
+
+The embedded macOS SDK only covers what Go itself links (`libSystem`, `libresolv`, `libobjc`, `CoreFoundation` and `Security`) and the `mach/mach_vm.h` header `prometheus/client_golang` includes. A project whose cgo code includes other Apple headers (`<CoreFoundation/CoreFoundation.h>`, ...) or links other frameworks (`IOKit`, `Foundation`, ...) for darwin must keep `--builder=goreleaser-docker`, whose image has the full SDK. Likewise, cgo dependencies found through `pkg-config` are not available. Linux binaries link LLVM's unwinder, which prebuilt Rust libraries such as `wasmtime-go`'s need.
+
+On `release`, the binaries are packaged as Goreleaser did (`<project>_<os>_<arch>.tar.gz` holding the binary, README and LICENSE, plus `checksums.txt` unless `checksums-disabled`), attached to the draft release created with `gh`, and the Homebrew formula is rendered and committed to the tap (or opened as a pull request with `brew-pull-request`) unless `brew-disabled`.
+
+To refresh the embedded macOS SDK stubs from a newer [osxcross](https://github.com/crazy-max/docker-osxcross) image, run `go generate -run macossdkgen` in `cmd/sfreleaser` (it needs Docker), or `go run ./cmd/sfreleaser/internal/macossdkgen -image <image> -out cmd/sfreleaser/macos_sdk` for another image.
+
 ### Development Version
 
 The `sfreleaser` binary uses a build injected value for the `version` which is later used to compare against `sfreleaser-min-version` check in the config file.
