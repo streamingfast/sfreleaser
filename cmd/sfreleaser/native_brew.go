@@ -159,12 +159,23 @@ func brewFormulaClass(name string) string {
 	return class.String()
 }
 
+// brewFormulaUpdate is what [publishBrewFormula] changed in the tap.
+type brewFormulaUpdate struct {
+	// Unchanged is true when the tap's default branch already had the formula.
+	Unchanged bool
+	// PullRequest is the URL of the pull request, empty when committed straight to the
+	// default branch.
+	PullRequest string
+	// Commit is the commit holding the formula.
+	Commit string
+}
+
 // publishBrewFormula commits the formula of the release to the tap, directly on its default
 // branch or through a pull request, with HOMEBREW_TAP_TOKEN when set.
-func publishBrewFormula(global *GlobalModel, release *ReleaseModel, archives []nativeArchive) error {
+func publishBrewFormula(global *GlobalModel, release *ReleaseModel, archives []nativeArchive) (*brewFormulaUpdate, error) {
 	formula, err := renderBrewFormula(global, release.Version, archives)
 	if err != nil {
-		return fmt.Errorf("rendering Homebrew formula: %w", err)
+		return nil, fmt.Errorf("rendering Homebrew formula: %w", err)
 	}
 
 	tap := release.Brew.TapRepoOwner + "/" + release.Brew.TapRepoName
@@ -175,7 +186,12 @@ func publishBrewFormula(global *GlobalModel, release *ReleaseModel, archives []n
 		DefaultBranch string `json:"default_branch"`
 	}
 	if err := ghAPIJSON(&repository, "repos/"+tap); err != nil {
-		return fmt.Errorf("reading tap %s: %w", tap, err)
+		return nil, fmt.Errorf("reading tap %s: %w", tap, err)
+	}
+
+	if current, found := tapFileContent(tap, path, repository.DefaultBranch); found && current == formula {
+		fmt.Printf("Homebrew formula %s in %s is already up to date\n", path, tap)
+		return &brewFormulaUpdate{Unchanged: true}, nil
 	}
 
 	branch := repository.DefaultBranch
@@ -183,7 +199,7 @@ func publishBrewFormula(global *GlobalModel, release *ReleaseModel, archives []n
 		// Goreleaser's branch name, reused as is when it exists, as Goreleaser did.
 		branch = global.Project + "-" + strings.TrimPrefix(release.Version, "v")
 		if err := ensureBranch(tap, branch, repository.DefaultBranch); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -197,25 +213,54 @@ func publishBrewFormula(global *GlobalModel, release *ReleaseModel, archives []n
 	}
 
 	fmt.Printf("Updating Homebrew formula %s in %s (branch %s)\n", path, tap, branch)
-	if _, err := ghAPI(arguments...); err != nil {
-		return fmt.Errorf("updating %s in %s: %w", path, tap, err)
+	var written struct {
+		Commit struct {
+			SHA string `json:"sha"`
+		} `json:"commit"`
+	}
+	if err := ghAPIJSON(&written, arguments...); err != nil {
+		return nil, fmt.Errorf("updating %s in %s: %w", path, tap, err)
 	}
 
+	update := &brewFormulaUpdate{Commit: written.Commit.SHA}
 	if !release.Brew.PullRequest {
-		return nil
+		return update, nil
 	}
 
-	url, err := runGH("pr", "create", "--repo", tap, "--base", repository.DefaultBranch, "--head", branch, "--title", message, "--body", "\n###### Automated with [sfreleaser](https://github.com/streamingfast/sfreleaser)")
-	if err != nil {
+	if _, err := runGH("pr", "create", "--repo", tap, "--base", repository.DefaultBranch, "--head", branch, "--title", message, "--body", "\n###### Automated with [sfreleaser](https://github.com/streamingfast/sfreleaser)"); err != nil {
 		// A release run again updates the branch of the pull request it already opened.
 		if !strings.Contains(err.Error(), "already exists") {
-			return fmt.Errorf("opening Homebrew formula pull request: %w", err)
+			return nil, fmt.Errorf("opening Homebrew formula pull request: %w", err)
 		}
-		url = "the existing pull request of branch " + branch
 	}
 
-	fmt.Printf("Homebrew formula pull request: %s\n", strings.TrimSpace(url))
-	return nil
+	// 'pr create' prints no URL for an existing pull request. A fork's pull request with the
+	// same branch name is ignored.
+	url, err := runGH("pr", "list", "--repo", tap, "--head", branch, "--state", "open", "--json", "url,isCrossRepository", "--jq", "[.[] | select(.isCrossRepository == false)][0].url // empty")
+	if err != nil {
+		return nil, fmt.Errorf("finding Homebrew formula pull request: %w", err)
+	}
+
+	update.PullRequest = strings.TrimSpace(url)
+	fmt.Printf("Homebrew formula pull request: %s\n", update.PullRequest)
+	return update, nil
+}
+
+// tapFileContent is the content of path on branch, not found when the file does not exist yet.
+func tapFileContent(tap, path, branch string) (string, bool) {
+	var file struct {
+		Content string `json:"content"`
+	}
+	if err := ghAPIJSON(&file, "repos/"+tap+"/contents/"+path+"?ref="+neturl.QueryEscape(branch)); err != nil {
+		return "", false
+	}
+
+	content, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(file.Content, "\n", ""))
+	if err != nil {
+		return "", false
+	}
+
+	return string(content), true
 }
 
 // ensureBranch creates branch on tap from the head of base, unless it already exists.

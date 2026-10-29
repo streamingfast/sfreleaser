@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The `release` section of `.sfreleaser` now also applies to the `release` subcommands.
 
+- Added `publish-brew <version>`, which updates the Homebrew formula of a Go application once its release is published: it renders the formula from the archives attached to the release and commits it to the tap, or opens a pull request with `--brew-pull-request`, which `--merge` merges once its checks pass. Drafts are refused, pre-releases and a formula already up to date are skipped, so running it again is safe.
+
 ### Fixed
 
 - Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.

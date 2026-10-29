@@ -280,6 +280,17 @@ type ReleaseModel struct {
 
 var tapRepoOwnerPrefix = regexp.MustCompile(`^[^/]+/`)
 
+// tapRepository splits the 'brew-tap-repo' value, '<name>' or '<owner>/<name>', the owner
+// defaulting to the project's.
+func tapRepository(global *GlobalModel, tapRepo string) (owner string, name string) {
+	if tapRepoOwnerPrefix.MatchString(tapRepo) {
+		owner = strings.TrimSuffix(tapRepoOwnerPrefix.FindString(tapRepo), "/")
+		return owner, strings.TrimPrefix(tapRepo, owner+"/")
+	}
+
+	return global.Owner, tapRepo
+}
+
 func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 	m.ReadmeRelativePath = findFile(global.WorkingDirectory, orMatcher(
 		caseInsensitiveMatcher("README.md"),
@@ -297,15 +308,7 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 	m.Builder = mustGetBuilder(cmd)
 	m.ZigPath = zigPathValue(cmd, global)
 
-	tapRepo := sflags.MustGetString(cmd, "brew-tap-repo")
-
-	tapRepoOwner := global.Owner
-	tapRepoName := tapRepo
-
-	if tapRepoOwnerPrefix.MatchString(tapRepo) {
-		tapRepoOwner = strings.TrimSuffix(tapRepoOwnerPrefix.FindString(tapRepo), "/")
-		tapRepoName = strings.TrimPrefix(tapRepo, tapRepoOwner+"/")
-	}
+	tapRepoOwner, tapRepoName := tapRepository(global, sflags.MustGetString(cmd, "brew-tap-repo"))
 
 	m.Brew = &BrewReleaseModel{
 		Disabled:     sflags.MustGetBool(cmd, "brew-disabled"),
