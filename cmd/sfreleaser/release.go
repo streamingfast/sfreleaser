@@ -76,6 +76,7 @@ var ReleaseCmd = Command(release,
 
 		// Brew Flags
 		flags.Bool("brew-disabled", false, "[Brew only] Disable Brew tap release completely, only applies for 'Golang'/'Application' types")
+		flags.Bool("brew-deferred", false, "[Brew only] Do not update the formula during the release, only check that the tap can be updated, 'sfreleaser publish-brew' updates it once the release is published")
 		flags.String("brew-tap-repo", "homebrew-tap", "[Brew only] The GitHub project name of the tap, the repo owner is defined by 'owner' config value")
 		flags.Bool("brew-pull-request", false, "[Brew only] Open a pull request against the tap instead of committing the formula straight to its default branch, required when the tap's branch protection refuses direct pushes")
 
@@ -168,6 +169,11 @@ func release(cmd *cobra.Command, args []string) error {
 
 		// Before the first 'gh' call, which checks for an existing release.
 		useGitHubTokenForGh()
+	}
+
+	// 'publish-brew' skips pre-releases, a deferred one never needs the tap.
+	if usesGoreleaser(global, release) && !release.Brew.Disabled && !(release.Brew.Deferred && isPrereleaseVersion(release.Version)) {
+		cli.NoError(ensureBrewTapReachable(release.Brew), "The Homebrew formula could not be updated")
 	}
 
 	// Resolved before anything is built or released so that a missing/outdated Cargo is reported

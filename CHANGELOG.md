@@ -25,11 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `publish-brew <version>`, which updates the Homebrew formula of a Go application once its release is published: it renders the formula from the archives attached to the release and commits it to the tap, or opens a pull request with `--brew-pull-request`, which `--merge` merges once its checks pass. Drafts are refused, pre-releases and a formula already up to date are skipped, so running it again is safe.
 
+- Added `release --brew-deferred` (config at `release.brew-deferred`), which leaves the formula to `publish-brew` instead of updating it during the release, for either builder.
+
 ### Fixed
 
 - Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.
 
 ### Changed
+
+- `release` now checks that the token updating the Homebrew formula, `HOMEBREW_TAP_TOKEN` when set, can read the tap before building anything, so a missing or wrong token fails the release before it exists instead of after.
 
 - Releases of a version with a pre-release suffix (e.g. `v1.4.0-rc.1`) are now marked as pre-release on GitHub, whether created by Goreleaser or with `gh`.
 

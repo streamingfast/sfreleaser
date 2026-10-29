@@ -312,6 +312,7 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 
 	m.Brew = &BrewReleaseModel{
 		Disabled:     sflags.MustGetBool(cmd, "brew-disabled"),
+		Deferred:     sflags.MustGetBool(cmd, "brew-deferred"),
 		PullRequest:  sflags.MustGetBool(cmd, "brew-pull-request"),
 		TapRepoOwner: tapRepoOwner,
 		TapRepoName:  tapRepoName,
@@ -401,7 +402,9 @@ type GitHubReleaseModel struct {
 }
 
 type BrewReleaseModel struct {
-	Disabled     bool
+	Disabled bool
+	// Deferred leaves the formula to 'publish-brew', run once the release is published.
+	Deferred     bool
 	PullRequest  bool
 	TapRepoOwner string
 	TapRepoName  string
