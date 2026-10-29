@@ -129,13 +129,16 @@ func build(cmd *cobra.Command, args []string) error {
 
 	var targets []nativeTarget
 	if build.Builder == BuilderNative {
-		cli.Ensure(global.Language == LanguageGolang && global.Variant == VariantApplication, "The native builder only builds Go applications, use '--builder=goreleaser-docker' for this project")
-		ensureCommandExist("go", "The Go toolchain (https://go.dev/dl/) is required by the native builder.")
+		cli.Ensure(global.Language == LanguageGolang, "The native builder only builds Go projects, use '--builder=goreleaser-docker' for this project")
 
-		// Before the hooks run, so that a wrong platform fails fast.
-		var err error
-		if targets, err = selectNativeTargets(build.All, build.Platforms, runtime.GOOS, runtime.GOARCH); err != nil {
-			return err
+		if global.Variant == VariantApplication {
+			ensureCommandExist("go", "The Go toolchain (https://go.dev/dl/) is required by the native builder.")
+
+			// Before the hooks run, so that a wrong platform fails fast.
+			var err error
+			if targets, err = selectNativeTargets(build.All, build.Platforms, runtime.GOOS, runtime.GOARCH); err != nil {
+				return err
+			}
 		}
 	} else {
 		verifyTools(true)
@@ -166,6 +169,13 @@ func build(cmd *cobra.Command, args []string) error {
 	}
 
 	if build.Builder == BuilderNative {
+		// Like Goreleaser's library config, which skips every build.
+		if global.Variant != VariantApplication {
+			fmt.Println()
+			fmt.Println("Go libraries have no binaries to build")
+			return nil
+		}
+
 		return buildNativeArtifacts(global, build, targets)
 	}
 
