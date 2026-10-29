@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -24,21 +25,36 @@ func readVersionFromChangelog(changelogFile string) string {
 	cli.NoError(err, "Unable to open changelog %q", changelogFile)
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	version, _, err := changelogVersions(file)
+	cli.NoError(err, "Unable to scan lines from changelog")
+
+	return version
+}
+
+// changelogVersions returns the first versioned section of the changelog and the version of its
+// first section, empty when that first section is not versioned, such as "Unreleased".
+func changelogVersions(changelog io.Reader) (version string, firstSection string, err error) {
+	foundFirstSection := false
+
+	scanner := bufio.NewScanner(changelog)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if headerRegex.MatchString(line) {
-			version := extractVersionFromHeader(line)
-			if version != "" {
-				return version
-			}
+		if !headerRegex.MatchString(line) {
+			continue
+		}
+
+		lineVersion := extractVersionFromHeader(line)
+		if !foundFirstSection {
+			foundFirstSection = true
+			firstSection = lineVersion
+		}
+
+		if lineVersion != "" {
+			return lineVersion, firstSection, nil
 		}
 	}
 
-	cli.NoError(scanner.Err(), "Unable to scan lines from changelog")
-
-	// We found nothing!
-	return ""
+	return "", firstSection, scanner.Err()
 }
 
 var versionRegex = regexp.MustCompile(`v?([0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9\-_\.]*)`)

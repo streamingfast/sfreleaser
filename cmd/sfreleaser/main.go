@@ -52,6 +52,7 @@ func main() {
 
 		Group("changelog", "Commands to manipulate changelog files",
 			ChangelogExtractSectionCmd,
+			ChangelogDetectReleaseCmd,
 		),
 
 		Description(`
