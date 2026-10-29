@@ -318,7 +318,8 @@ func releaseGithubNative(global *GlobalModel, release *ReleaseModel, githubRelea
 	releaseGithubDraft(global, release, githubRelease, assets...)
 
 	if !release.Brew.Disabled {
-		cli.NoError(publishBrewFormula(global, release, archives), "Unable to update the Homebrew formula")
+		_, err := publishBrewFormula(global, release, archives)
+		cli.NoError(err, "Unable to update the Homebrew formula")
 	}
 }
 

@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `changelog detect-release`, which prints the version a push should release: the first versioned section of the changelog, unless it was already there at `--before` or its tag exists. It fails when that version is not the first section, and `--skip-fork-pull-request` releases nothing for a commit merged from a fork's pull request.
 
+- Added `publish-brew <version>`, which updates the Homebrew formula of a Go application once its release is published: it renders the formula from the archives attached to the release and commits it to the tap, or opens a pull request with `--brew-pull-request`, which `--merge` merges once its checks pass. Drafts are refused, pre-releases and a formula already up to date are skipped, so running it again is safe.
+
 ### Fixed
 
 - Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.
