@@ -222,3 +222,15 @@ func TestReleaseModel_validateForRelease(t *testing.T) {
 		})
 	}
 }
+
+func Test_tapRepository(t *testing.T) {
+	global := &GlobalModel{Owner: "streamingfast"}
+
+	owner, name := tapRepository(global, "homebrew-tap")
+	assert.Equal(t, "streamingfast", owner)
+	assert.Equal(t, "homebrew-tap", name)
+
+	owner, name = tapRepository(global, "acme/homebrew-tools")
+	assert.Equal(t, "acme", owner)
+	assert.Equal(t, "homebrew-tools", name)
+}
