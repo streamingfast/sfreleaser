@@ -47,7 +47,6 @@ func main() {
 		DoctorCmd,
 		BuildCmd,
 		ReleaseCmd,
-		PublishBrewCmd,
 		InitCmd,
 		InstallCmd,
 

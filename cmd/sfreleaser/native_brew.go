@@ -203,26 +203,36 @@ func publishBrewFormula(global *GlobalModel, release *ReleaseModel, archives []n
 		}
 	}
 
-	arguments := []string{"--method", "PUT", "repos/" + tap + "/contents/" + path,
-		"-f", "message=" + message,
-		"-f", "content=" + base64.StdEncoding.EncodeToString([]byte(formula)),
-		"-f", "branch=" + branch,
-	}
-	if sha := tapFileSHA(tap, path, branch); sha != "" {
-		arguments = append(arguments, "-f", "sha="+sha)
+	update := &brewFormulaUpdate{}
+	if current, found := tapFileContent(tap, path, branch); release.Brew.PullRequest && found && current == formula {
+		fmt.Printf("Homebrew formula %s in %s is already on branch %s\n", path, tap, branch)
+		update.Commit, err = tapBranchHead(tap, branch)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		arguments := []string{"--method", "PUT", "repos/" + tap + "/contents/" + path,
+			"-f", "message=" + message,
+			"-f", "content=" + base64.StdEncoding.EncodeToString([]byte(formula)),
+			"-f", "branch=" + branch,
+		}
+		if sha := tapFileSHA(tap, path, branch); sha != "" {
+			arguments = append(arguments, "-f", "sha="+sha)
+		}
+
+		fmt.Printf("Updating Homebrew formula %s in %s (branch %s)\n", path, tap, branch)
+		var written struct {
+			Commit struct {
+				SHA string `json:"sha"`
+			} `json:"commit"`
+		}
+		if err := ghAPIJSON(&written, arguments...); err != nil {
+			return nil, fmt.Errorf("updating %s in %s: %w", path, tap, err)
+		}
+
+		update.Commit = written.Commit.SHA
 	}
 
-	fmt.Printf("Updating Homebrew formula %s in %s (branch %s)\n", path, tap, branch)
-	var written struct {
-		Commit struct {
-			SHA string `json:"sha"`
-		} `json:"commit"`
-	}
-	if err := ghAPIJSON(&written, arguments...); err != nil {
-		return nil, fmt.Errorf("updating %s in %s: %w", path, tap, err)
-	}
-
-	update := &brewFormulaUpdate{Commit: written.Commit.SHA}
 	if !release.Brew.PullRequest {
 		return update, nil
 	}
@@ -269,17 +279,27 @@ func ensureBranch(tap, branch, base string) error {
 		return nil
 	}
 
+	head, err := tapBranchHead(tap, base)
+	if err != nil {
+		return err
+	}
+
+	_, err = ghAPI("--method", "POST", "repos/"+tap+"/git/refs", "-f", "ref=refs/heads/"+branch, "-f", "sha="+head)
+	return err
+}
+
+// tapBranchHead is the commit at the head of branch.
+func tapBranchHead(tap, branch string) (string, error) {
 	var head struct {
 		Object struct {
 			SHA string `json:"sha"`
 		} `json:"object"`
 	}
-	if err := ghAPIJSON(&head, "repos/"+tap+"/git/ref/heads/"+base); err != nil {
-		return fmt.Errorf("reading %s of %s: %w", base, tap, err)
+	if err := ghAPIJSON(&head, "repos/"+tap+"/git/ref/heads/"+branch); err != nil {
+		return "", fmt.Errorf("reading %s of %s: %w", branch, tap, err)
 	}
 
-	_, err := ghAPI("--method", "POST", "repos/"+tap+"/git/refs", "-f", "ref=refs/heads/"+branch, "-f", "sha="+head.Object.SHA)
-	return err
+	return head.Object.SHA, nil
 }
 
 // tapFileSHA is the blob SHA of path on branch, empty when the file does not exist yet.

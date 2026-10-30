@@ -25,6 +25,7 @@ var ReleaseCmd = Command(release,
 	"release [<version>]",
 	"Perform the actual release",
 	ReleaseDetectCmd,
+	ReleasePublishCmd,
 	Description(`
 		Based on the type of project your are building, perform the necessary step to perform
 		a GitHub release of your project.
@@ -62,38 +63,49 @@ var ReleaseCmd = Command(release,
 
 	`),
 	Flags(func(flags *pflag.FlagSet) {
-		flags.Bool("allow-dirty", false, "Perform release step even if Git is not clean, tries to configured used tool(s) to also allow dirty Git state")
-		flags.String("changelog-path", "CHANGELOG.md", "Path where to find the changelog file used to extract the release notes")
-		flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps, template your pre-hook with various injected variables, see long description of command for more details")
-		flags.StringArray("upload-extra-assets", nil, "If provided, add this extra asset file to the release, use a 'pre-build-hooks' to generate the file if needed")
+		releaseFlags(flags)
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
-		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.27", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
-		flags.Bool("no-binaries", false, "Skip building binaries completely; useful for library-only releases or when binaries are built through other means (cannot be used with library variant)")
-		flags.String("builder", "goreleaser-docker", "What builds the binaries of a Go application, 'goreleaser-docker' (Goreleaser in the goreleaser-cross image) or 'native' (go build with zig as the cgo cross-compiler, without Docker)")
-		flags.String("zig-path", "", "[native builder only] The zig binary to compile cgo code with, by default the pinned zig version is found on PATH or downloaded to the sfreleaser cache directory")
-		flags.Bool("cgo-disabled", false, "Build the binaries with CGO_ENABLED=0, statically linked, instead of dynamically linked against the libc of the Goreleaser image")
-		flags.Bool("checksums-disabled", false, "Do not attach the 'checksums.txt' asset to the release")
-		flags.Bool("skip-changelog-validation", false, "Skip validation that changelog contains an entry for the release version")
-
-		// Brew Flags
-		flags.Bool("brew-disabled", false, "[Brew only] Disable Brew tap release completely, only applies for 'Golang'/'Application' types")
-		flags.String("brew-tap-repo", "homebrew-tap", "[Brew only] The GitHub project name of the tap, the repo owner is defined by 'owner' config value")
-		flags.Bool("brew-pull-request", false, "[Brew only] Open a pull request against the tap instead of committing the formula straight to its default branch, required when the tap's branch protection refuses direct pushes")
-
-		// Rust Flags
-		flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish' when publishing, the tool might provide some default on its own, Bash rules are used to split the arguments from the string")
-		flags.StringArray("rust-crates", nil, "[Rust only] The list of crates we should publish, the project is expected to be a workspace if this is used, ordering is irrelevant unless 'rust-cargo-publish-mode' is 'sequential'")
-		flags.String("rust-cargo-publish-mode", RustCratesPublishModeInferred, "[Rust only] How the crates are published, 'inferred' publishes them all through a single 'cargo publish' invocation letting Cargo order them (requires Cargo >= "+cargoMultiPackagePublishMinVersion.String()+"), 'sequential' publishes them one by one in the exact 'rust-crates' order")
-
-		// Substreams Flags
-		flags.String("substreams-registry-url", "", "[Substreams only] The registry URL to publish the package to (defaults to official registry if not specified)")
-		flags.String("substreams-publish-team-slug", "", "[Substreams only] Team slug to use for publication; passed as --team-slug to 'substreams registry publish'")
-
-		// Deprecated Flags
-		flags.String("upload-substreams-spkg", "", "If provided, add this Substreams package file to the release, if manifest is a 'substreams.yaml' file, the package is first built")
-		flags.Lookup("upload-substreams-spkg").Deprecated = "use a --pre-build-hooks to build your '.spkg' and --upload-extra-assets to upload it, see command long description for more details"
 	}),
-	Execute(func(cmd *cobra.Command, args []string) error {
+	releaseExecute(release),
+	OnCommandError(onReleaseError),
+)
+
+// releaseFlags are the flags 'release' shares with its subcommands that build or publish.
+func releaseFlags(flags *pflag.FlagSet) {
+	flags.Bool("allow-dirty", false, "Perform release step even if Git is not clean, tries to configured used tool(s) to also allow dirty Git state")
+	flags.String("changelog-path", "CHANGELOG.md", "Path where to find the changelog file used to extract the release notes")
+	flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps, template your pre-hook with various injected variables, see long description of command for more details")
+	flags.StringArray("upload-extra-assets", nil, "If provided, add this extra asset file to the release, use a 'pre-build-hooks' to generate the file if needed")
+	flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.27", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
+	flags.Bool("no-binaries", false, "Skip building binaries completely; useful for library-only releases or when binaries are built through other means (cannot be used with library variant)")
+	flags.String("builder", "goreleaser-docker", "What builds the binaries of a Go application, 'goreleaser-docker' (Goreleaser in the goreleaser-cross image) or 'native' (go build with zig as the cgo cross-compiler, without Docker)")
+	flags.String("zig-path", "", "[native builder only] The zig binary to compile cgo code with, by default the pinned zig version is found on PATH or downloaded to the sfreleaser cache directory")
+	flags.Bool("cgo-disabled", false, "Build the binaries with CGO_ENABLED=0, statically linked, instead of dynamically linked against the libc of the Goreleaser image")
+	flags.Bool("checksums-disabled", false, "Do not attach the 'checksums.txt' asset to the release")
+	flags.Bool("skip-changelog-validation", false, "Skip validation that changelog contains an entry for the release version")
+
+	// Brew Flags
+	flags.Bool("brew-disabled", false, "[Brew only] Disable Brew tap release completely, only applies for 'Golang'/'Application' types")
+	flags.String("brew-tap-repo", "homebrew-tap", "[Brew only] The GitHub project name of the tap, the repo owner is defined by 'owner' config value")
+	flags.Bool("brew-pull-request", false, "[Brew only] Open a pull request against the tap instead of committing the formula straight to its default branch, required when the tap's branch protection refuses direct pushes")
+
+	// Rust Flags
+	flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish' when publishing, the tool might provide some default on its own, Bash rules are used to split the arguments from the string")
+	flags.StringArray("rust-crates", nil, "[Rust only] The list of crates we should publish, the project is expected to be a workspace if this is used, ordering is irrelevant unless 'rust-cargo-publish-mode' is 'sequential'")
+	flags.String("rust-cargo-publish-mode", RustCratesPublishModeInferred, "[Rust only] How the crates are published, 'inferred' publishes them all through a single 'cargo publish' invocation letting Cargo order them (requires Cargo >= "+cargoMultiPackagePublishMinVersion.String()+"), 'sequential' publishes them one by one in the exact 'rust-crates' order")
+
+	// Substreams Flags
+	flags.String("substreams-registry-url", "", "[Substreams only] The registry URL to publish the package to (defaults to official registry if not specified)")
+	flags.String("substreams-publish-team-slug", "", "[Substreams only] Team slug to use for publication; passed as --team-slug to 'substreams registry publish'")
+
+	// Deprecated Flags
+	flags.String("upload-substreams-spkg", "", "If provided, add this Substreams package file to the release, if manifest is a 'substreams.yaml' file, the package is first built")
+	flags.Lookup("upload-substreams-spkg").Deprecated = "use a --pre-build-hooks to build your '.spkg' and --upload-extra-assets to upload it, see command long description for more details"
+}
+
+// releaseExecute runs a release command, the exit handlers it registered run once it completes.
+func releaseExecute(execute func(cmd *cobra.Command, args []string) error) CommandOption {
+	return Execute(func(cmd *cobra.Command, args []string) error {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
@@ -103,7 +115,7 @@ var ReleaseCmd = Command(release,
 			cli.Exit(1)
 		}()
 
-		if err := release(cmd, args); err != nil {
+		if err := execute(cmd, args); err != nil {
 			// Return error normally, will hit OnCommandError right after
 			return err
 		}
@@ -111,19 +123,20 @@ var ReleaseCmd = Command(release,
 		// Forces our exit handler (if any) to run
 		cli.Exit(0)
 		return nil
-	}),
-	OnCommandError(func(err error) {
-		fmt.Println("The release failed with the following error:")
-		fmt.Println()
-		fmt.Println(err.Error())
-		fmt.Println()
+	})
+}
 
-		fmt.Println("If the error is not super clear, you can use 'sfreleaser doctor' which")
-		fmt.Println("list common errors and how to fix them.")
+func onReleaseError(err error) {
+	fmt.Println("The release failed with the following error:")
+	fmt.Println()
+	fmt.Println(err.Error())
+	fmt.Println()
 
-		cli.Exit(1)
-	}),
-)
+	fmt.Println("If the error is not super clear, you can use 'sfreleaser doctor' which")
+	fmt.Println("list common errors and how to fix them.")
+
+	cli.Exit(1)
+}
 
 func release(cmd *cobra.Command, args []string) error {
 	global := mustGetGlobal(cmd)
