@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -44,6 +46,30 @@ func Test_detectRelease(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantVersion, version)
 			assert.Equal(t, tt.wantReason, reason)
+		})
+	}
+}
+
+func Test_gitHubEventBaseRevision(t *testing.T) {
+	eventPath := filepath.Join(t.TempDir(), "event.json")
+	require.NoError(t, os.WriteFile(eventPath, []byte(`{"before":"abc","pull_request":{"base":{"sha":"def"}}}`), 0o644))
+
+	tests := []struct {
+		eventName string
+		eventPath string
+		want      string
+	}{
+		{"push", eventPath, "abc"},
+		{"pull_request", eventPath, "def"},
+		{"workflow_dispatch", eventPath, ""},
+		{"", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.eventName, func(t *testing.T) {
+			revision, err := gitHubEventBaseRevision(tt.eventName, tt.eventPath)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, revision)
 		})
 	}
 }
