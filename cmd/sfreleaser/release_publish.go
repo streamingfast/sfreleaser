@@ -24,8 +24,8 @@ var ReleasePublishCmd = Command(releasePublish,
 	"Publish a prepared release and merge its Homebrew pull request",
 	Flags(releaseStepFlags),
 	Description(`
-		Publishes a release and updates its Homebrew formula through a pull request, opened when
-		there is none, it is safe to run again.
+		Finishes what 'sfreleaser release prepare' started, it is safe to run again. The Homebrew
+		pull request is opened if it is missing.
 
 		The checks of the Homebrew pull request must pass first. A release still in draft then
 		has its crates or Substreams package published, followed by the release itself. The

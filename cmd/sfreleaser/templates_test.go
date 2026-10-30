@@ -69,3 +69,20 @@ func Test_renderGoreleaserFile_brewPullRequest(t *testing.T) {
 		})
 	}
 }
+
+func Test_renderGoreleaserFile_brewDeferred(t *testing.T) {
+	global := &GlobalModel{Owner: "streamingfast", Project: "acme", Binary: "acme", Language: LanguageGolang, Variant: VariantApplication}
+	release := &ReleaseModel{Brew: &BrewReleaseModel{Deferred: true, TapRepoOwner: "streamingfast", TapRepoName: "homebrew-tap"}}
+
+	configPath := filepath.Join(t.TempDir(), "goreleaser.yaml")
+	renderGoreleaserFile(global, release, &GitHubReleaseModel{GoreleaserConfigPath: configPath})
+
+	content, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+
+	var config struct {
+		Brews []any `yaml:"brews"`
+	}
+	require.NoError(t, yaml.Unmarshal(content, &config))
+	assert.Empty(t, config.Brews)
+}

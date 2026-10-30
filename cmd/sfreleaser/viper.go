@@ -50,7 +50,7 @@ func ConfigureReleaserConfigFile() cli.CommandOption {
 // inheritReleaseConfig makes the 'release' section of the config apply to the release
 // subcommands, whose flags are bound to 'release.<subcommand>.<flag>'.
 func inheritReleaseConfig() {
-	subcommands := []string{"detect", "publish"}
+	subcommands := []string{"detect", "prepare", "publish"}
 
 	settings := viper.GetStringMap("release")
 	for _, subcommand := range subcommands {
