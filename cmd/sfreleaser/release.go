@@ -24,6 +24,7 @@ const deleteTagExitHandlerID = "delete-tag"
 var ReleaseCmd = Command(release,
 	"release [<version>]",
 	"Perform the actual release",
+	ReleaseDetectCmd,
 	Description(`
 		Based on the type of project your are building, perform the necessary step to perform
 		a GitHub release of your project.
