@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -27,6 +28,8 @@ func ConfigureReleaserConfigFile() cli.CommandOption {
 				cli.NoError(err, "Loading config file failed")
 			}
 		}
+
+		inheritReleaseConfig()
 	}
 
 	return cli.CommandOptionFunc(func(cmd *cobra.Command) {
@@ -42,4 +45,19 @@ func ConfigureReleaserConfigFile() cli.CommandOption {
 
 		root.PersistentPreRun = hook
 	})
+}
+
+// inheritReleaseConfig makes the 'release' section of the config apply to the release
+// subcommands, whose flags are bound to 'release.<subcommand>.<flag>'.
+func inheritReleaseConfig() {
+	subcommands := []string{"detect"}
+
+	settings := viper.GetStringMap("release")
+	for _, subcommand := range subcommands {
+		for key, value := range settings {
+			if !slices.Contains(subcommands, key) {
+				viper.SetDefault("release."+subcommand+"."+key, value)
+			}
+		}
+	}
 }
