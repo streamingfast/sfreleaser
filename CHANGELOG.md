@@ -21,11 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `--builder=native` (config at `release.builder`) to `build` and `release`, which builds Go applications with `go build` and zig as the cgo cross-compiler instead of Goreleaser in the `goreleaser-cross` Docker image, so no Docker is needed. zig is downloaded and cached on first use (or taken from `PATH`, or `--zig-path`, config at `release.zig-path`), and the macOS SDK stubs darwin binaries need are embedded. `release` packages the same archives and `checksums.txt` Goreleaser did, creates the draft release with `gh` and updates the Homebrew formula on the same branch and file as Goreleaser; the formula commit is authored by the release token's account instead of `goreleaser`, and the pull request body credits sfreleaser. Darwin binaries need macOS 11 or later, linux ones glibc 2.17. The embedded macOS SDK only has the stubs Go itself links and the `mach/mach_vm.h` header `prometheus/client_golang` needs, so cgo code using other Apple headers or frameworks needs `goreleaser-docker`. `goreleaser-docker` stays the default.
 
-- Added `changelog detect-release`, which prints the version a push should release: the first versioned section of the changelog, unless it was already there at `--before` or its tag exists. It fails when that version is not the first section, and `--skip-fork-pull-request` releases nothing for a commit merged from a fork's pull request.
+- Added `release detect`, which prints the version to release: the first versioned section of the changelog, unless it was already there at `--before` or its tag exists. It fails when that version is not the first section. In GitHub Actions it needs no arguments: `--before` comes from the event and the `version` output is written to `GITHUB_OUTPUT`.
 
-- Added `publish-brew <version>`, which updates the Homebrew formula of a Go application once its release is published: it renders the formula from the archives attached to the release and commits it to the tap, or opens a pull request with `--brew-pull-request`, which `--merge` merges once its checks pass. Drafts are refused, pre-releases and a formula already up to date are skipped, so running it again is safe.
+- The `release` section of `.sfreleaser` now also applies to the `release` subcommands.
 
-- Added `release --brew-deferred` (config at `release.brew-deferred`), which leaves the formula to `publish-brew` instead of updating it during the release, for either builder.
+- Added `release publish [<version>]`, which waits for the checks of the Homebrew pull request, opening it if needed, publishes a release still in draft (crates or Substreams package first) and merges the pull request. It is safe to run again, and the version defaults to the tag of a GitHub Actions `release` event.
+
+- Added `release prepare <version>`, everything that can fail before a release goes public: it checks the tokens, builds, creates the draft release, opens the pull request updating the Homebrew formula and waits for its checks. It publishes and merges nothing.
 
 ### Fixed
 

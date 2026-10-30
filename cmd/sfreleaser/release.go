@@ -60,40 +60,53 @@ var ReleaseCmd = Command(release,
 		- {{ .build_dir }}: The final build directory used for the build
 
 	`),
+	ReleaseDetectCmd,
+	ReleasePrepareCmd,
+	ReleasePublishCmd,
 	Flags(func(flags *pflag.FlagSet) {
-		flags.Bool("allow-dirty", false, "Perform release step even if Git is not clean, tries to configured used tool(s) to also allow dirty Git state")
-		flags.String("changelog-path", "CHANGELOG.md", "Path where to find the changelog file used to extract the release notes")
-		flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps, template your pre-hook with various injected variables, see long description of command for more details")
-		flags.StringArray("upload-extra-assets", nil, "If provided, add this extra asset file to the release, use a 'pre-build-hooks' to generate the file if needed")
+		releaseFlags(flags)
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
-		flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.27", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
-		flags.Bool("no-binaries", false, "Skip building binaries completely; useful for library-only releases or when binaries are built through other means (cannot be used with library variant)")
-		flags.String("builder", "goreleaser-docker", "What builds the binaries of a Go application, 'goreleaser-docker' (Goreleaser in the goreleaser-cross image) or 'native' (go build with zig as the cgo cross-compiler, without Docker)")
-		flags.String("zig-path", "", "[native builder only] The zig binary to compile cgo code with, by default the pinned zig version is found on PATH or downloaded to the sfreleaser cache directory")
-		flags.Bool("cgo-disabled", false, "Build the binaries with CGO_ENABLED=0, statically linked, instead of dynamically linked against the libc of the Goreleaser image")
-		flags.Bool("checksums-disabled", false, "Do not attach the 'checksums.txt' asset to the release")
-		flags.Bool("skip-changelog-validation", false, "Skip validation that changelog contains an entry for the release version")
-
-		// Brew Flags
-		flags.Bool("brew-disabled", false, "[Brew only] Disable Brew tap release completely, only applies for 'Golang'/'Application' types")
-		flags.Bool("brew-deferred", false, "[Brew only] Do not update the formula during the release, only check that the tap can be updated, 'sfreleaser publish-brew' updates it once the release is published")
-		flags.String("brew-tap-repo", "homebrew-tap", "[Brew only] The GitHub project name of the tap, the repo owner is defined by 'owner' config value")
-		flags.Bool("brew-pull-request", false, "[Brew only] Open a pull request against the tap instead of committing the formula straight to its default branch, required when the tap's branch protection refuses direct pushes")
-
-		// Rust Flags
-		flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish' when publishing, the tool might provide some default on its own, Bash rules are used to split the arguments from the string")
-		flags.StringArray("rust-crates", nil, "[Rust only] The list of crates we should publish, the project is expected to be a workspace if this is used, ordering is irrelevant unless 'rust-cargo-publish-mode' is 'sequential'")
-		flags.String("rust-cargo-publish-mode", RustCratesPublishModeInferred, "[Rust only] How the crates are published, 'inferred' publishes them all through a single 'cargo publish' invocation letting Cargo order them (requires Cargo >= "+cargoMultiPackagePublishMinVersion.String()+"), 'sequential' publishes them one by one in the exact 'rust-crates' order")
-
-		// Substreams Flags
-		flags.String("substreams-registry-url", "", "[Substreams only] The registry URL to publish the package to (defaults to official registry if not specified)")
-		flags.String("substreams-publish-team-slug", "", "[Substreams only] Team slug to use for publication; passed as --team-slug to 'substreams registry publish'")
-
-		// Deprecated Flags
-		flags.String("upload-substreams-spkg", "", "If provided, add this Substreams package file to the release, if manifest is a 'substreams.yaml' file, the package is first built")
-		flags.Lookup("upload-substreams-spkg").Deprecated = "use a --pre-build-hooks to build your '.spkg' and --upload-extra-assets to upload it, see command long description for more details"
 	}),
-	Execute(func(cmd *cobra.Command, args []string) error {
+	releaseExecute(release),
+	OnCommandError(onReleaseError),
+)
+
+// releaseFlags are the flags 'release' shares with its subcommands that build or publish.
+func releaseFlags(flags *pflag.FlagSet) {
+	flags.Bool("allow-dirty", false, "Perform release step even if Git is not clean, tries to configured used tool(s) to also allow dirty Git state")
+	flags.String("changelog-path", "CHANGELOG.md", "Path where to find the changelog file used to extract the release notes")
+	flags.StringArray("pre-build-hooks", nil, "Set of pre build hooks to run before run the actual building steps, template your pre-hook with various injected variables, see long description of command for more details")
+	flags.StringArray("upload-extra-assets", nil, "If provided, add this extra asset file to the release, use a 'pre-build-hooks' to generate the file if needed")
+	flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.27", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
+	flags.Bool("no-binaries", false, "Skip building binaries completely; useful for library-only releases or when binaries are built through other means (cannot be used with library variant)")
+	flags.String("builder", "goreleaser-docker", "What builds the binaries of a Go application, 'goreleaser-docker' (Goreleaser in the goreleaser-cross image) or 'native' (go build with zig as the cgo cross-compiler, without Docker)")
+	flags.String("zig-path", "", "[native builder only] The zig binary to compile cgo code with, by default the pinned zig version is found on PATH or downloaded to the sfreleaser cache directory")
+	flags.Bool("cgo-disabled", false, "Build the binaries with CGO_ENABLED=0, statically linked, instead of dynamically linked against the libc of the Goreleaser image")
+	flags.Bool("checksums-disabled", false, "Do not attach the 'checksums.txt' asset to the release")
+	flags.Bool("skip-changelog-validation", false, "Skip validation that changelog contains an entry for the release version")
+
+	// Brew Flags
+	flags.Bool("brew-disabled", false, "[Brew only] Disable Brew tap release completely, only applies for 'Golang'/'Application' types")
+	flags.String("brew-tap-repo", "homebrew-tap", "[Brew only] The GitHub project name of the tap, the repo owner is defined by 'owner' config value")
+	flags.Bool("brew-pull-request", false, "[Brew only] Open a pull request against the tap instead of committing the formula straight to its default branch, required when the tap's branch protection refuses direct pushes")
+
+	// Rust Flags
+	flags.String("rust-cargo-publish-args", "", "[Rust only] The extra arguments to pass to 'cargo publish' when publishing, the tool might provide some default on its own, Bash rules are used to split the arguments from the string")
+	flags.StringArray("rust-crates", nil, "[Rust only] The list of crates we should publish, the project is expected to be a workspace if this is used, ordering is irrelevant unless 'rust-cargo-publish-mode' is 'sequential'")
+	flags.String("rust-cargo-publish-mode", RustCratesPublishModeInferred, "[Rust only] How the crates are published, 'inferred' publishes them all through a single 'cargo publish' invocation letting Cargo order them (requires Cargo >= "+cargoMultiPackagePublishMinVersion.String()+"), 'sequential' publishes them one by one in the exact 'rust-crates' order")
+
+	// Substreams Flags
+	flags.String("substreams-registry-url", "", "[Substreams only] The registry URL to publish the package to (defaults to official registry if not specified)")
+	flags.String("substreams-publish-team-slug", "", "[Substreams only] Team slug to use for publication; passed as --team-slug to 'substreams registry publish'")
+
+	// Deprecated Flags
+	flags.String("upload-substreams-spkg", "", "If provided, add this Substreams package file to the release, if manifest is a 'substreams.yaml' file, the package is first built")
+	flags.Lookup("upload-substreams-spkg").Deprecated = "use a --pre-build-hooks to build your '.spkg' and --upload-extra-assets to upload it, see command long description for more details"
+}
+
+// releaseExecute runs a release command, the exit handlers it registered run once it completes.
+func releaseExecute(execute func(cmd *cobra.Command, args []string) error) CommandOption {
+	return Execute(func(cmd *cobra.Command, args []string) error {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
@@ -103,7 +116,7 @@ var ReleaseCmd = Command(release,
 			cli.Exit(1)
 		}()
 
-		if err := release(cmd, args); err != nil {
+		if err := execute(cmd, args); err != nil {
 			// Return error normally, will hit OnCommandError right after
 			return err
 		}
@@ -111,21 +124,84 @@ var ReleaseCmd = Command(release,
 		// Forces our exit handler (if any) to run
 		cli.Exit(0)
 		return nil
-	}),
-	OnCommandError(func(err error) {
-		fmt.Println("The release failed with the following error:")
-		fmt.Println()
-		fmt.Println(err.Error())
-		fmt.Println()
+	})
+}
 
-		fmt.Println("If the error is not super clear, you can use 'sfreleaser doctor' which")
-		fmt.Println("list common errors and how to fix them.")
+func onReleaseError(err error) {
+	fmt.Println("The release failed with the following error:")
+	fmt.Println()
+	fmt.Println(err.Error())
+	fmt.Println()
 
-		cli.Exit(1)
-	}),
-)
+	fmt.Println("If the error is not super clear, you can use 'sfreleaser doctor' which")
+	fmt.Println("list common errors and how to fix them.")
+
+	cli.Exit(1)
+}
 
 func release(cmd *cobra.Command, args []string) error {
+	publishNow := sflags.MustGetBool(cmd, "publish-now")
+
+	global, release, err := draftRelease(cmd, args, publishNow, false)
+	if err != nil {
+		return err
+	}
+
+	version := release.Version
+	releaseURL := releaseURL(global, version)
+
+	if publishNow {
+		publishReleaseNow(global, release)
+	} else {
+		fmt.Println()
+		fmt.Println(dedent(`
+			Published release in **draft** mode
+
+			View release at %s
+
+			You can now publish it from the GitHub UI directly, on the release
+			page, press the small pencil button in the right corner to edit the release
+			and then press the 'Publish release' green button (scroll down to the bottom
+			of the page.
+
+			You can also publish from the GitHub CLI directly:
+
+			  gh release edit %s --draft=false
+
+			If something is wrong, you can delete the release from GitHub and try again by
+			doing 'gh release delete %s'.
+		`, releaseURL, version, version))
+
+		fmt.Println()
+		if !global.NonInteractive && confirm(global, "View release right now?") {
+			reviewRelease(releaseURL)
+		}
+
+		fmt.Println()
+		if confirm(global, "Publish release right now?") {
+			publishReleaseNow(global, release)
+		} else {
+			// Mirrors what [publishReleaseNow] would have published, so that the user gets the
+			// exact commands to run manually for every variant that publishes something.
+			if global.Language == LanguageRust {
+				switch {
+				case global.Variant == VariantSubstreams:
+					printSubstreamsRegistryNotPublishedMessage(release.Substreams)
+				case len(release.Rust.Crates) > 0:
+					printRustCratesNotPublishedMessage(release.Rust)
+				}
+			}
+		}
+
+		fmt.Println("Completed")
+	}
+
+	return nil
+}
+
+// draftRelease validates the release, builds it and creates its draft GitHub release. With
+// brewDeferred the Homebrew formula is left to the caller.
+func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bool) (*GlobalModel, *ReleaseModel, error) {
 	global := mustGetGlobal(cmd)
 	release := &ReleaseModel{Version: ""}
 	if len(args) > 0 {
@@ -136,7 +212,6 @@ func release(cmd *cobra.Command, args []string) error {
 	allowDirty := sflags.MustGetBool(cmd, "allow-dirty")
 	changelogPath := global.ResolveFile(sflags.MustGetString(cmd, "changelog-path"))
 	goreleaserDockerImage := sflags.MustGetString(cmd, "goreleaser-docker-image")
-	publishNow := sflags.MustGetBool(cmd, "publish-now")
 	preBuildHooks := sflags.MustGetStringArray(cmd, "pre-build-hooks")
 	uploadExtraAssets := sflags.MustGetStringArray(cmd, "upload-extra-assets")
 
@@ -144,6 +219,7 @@ func release(cmd *cobra.Command, args []string) error {
 	uploadSubstreamsSPKG := sflags.MustGetString(cmd, "upload-substreams-spkg")
 
 	release.populate(cmd, global)
+	release.Brew.Deferred = brewDeferred
 
 	zlog.Debug("starting 'sfreleaser release'",
 		zap.Inline(global),
@@ -171,7 +247,7 @@ func release(cmd *cobra.Command, args []string) error {
 		useGitHubTokenForGh()
 	}
 
-	// 'publish-brew' skips pre-releases, a deferred one never needs the tap.
+	// 'release prepare' skips the formula of a pre-release, it never needs the tap.
 	if usesGoreleaser(global, release) && !release.Brew.Disabled && !(release.Brew.Deferred && isPrereleaseVersion(release.Version)) {
 		cli.NoError(ensureBrewTapReachable(release.Brew), "The Homebrew formula could not be updated")
 	}
@@ -195,7 +271,7 @@ func release(cmd *cobra.Command, args []string) error {
 	if !skipChangelogValidation {
 		warning, err := validateChangelogForVersion(changelogPath, version)
 		if err != nil {
-			return fmt.Errorf("changelog validation failed: %w", err)
+			return nil, nil, fmt.Errorf("changelog validation failed: %w", err)
 		}
 		if warning != "" {
 			fmt.Println(warning)
@@ -294,55 +370,7 @@ func release(cmd *cobra.Command, args []string) error {
 		run("gh release upload", version, "--repo", global.Owner+"/"+global.Project, "'"+extraAsset+"'")
 	}
 
-	releaseURL := releaseURL(global, version)
-
-	if publishNow {
-		publishReleaseNow(global, release)
-	} else {
-		fmt.Println()
-		fmt.Println(dedent(`
-			Published release in **draft** mode
-
-			View release at %s
-
-			You can now publish it from the GitHub UI directly, on the release
-			page, press the small pencil button in the right corner to edit the release
-			and then press the 'Publish release' green button (scroll down to the bottom
-			of the page.
-
-			You can also publish from the GitHub CLI directly:
-
-			  gh release edit %s --draft=false
-
-			If something is wrong, you can delete the release from GitHub and try again by
-			doing 'gh release delete %s'.
-		`, releaseURL, version, version))
-
-		fmt.Println()
-		if !global.NonInteractive && confirm(global, "View release right now?") {
-			reviewRelease(releaseURL)
-		}
-
-		fmt.Println()
-		if confirm(global, "Publish release right now?") {
-			publishReleaseNow(global, release)
-		} else {
-			// Mirrors what [publishReleaseNow] would have published, so that the user gets the
-			// exact commands to run manually for every variant that publishes something.
-			if global.Language == LanguageRust {
-				switch {
-				case global.Variant == VariantSubstreams:
-					printSubstreamsRegistryNotPublishedMessage(release.Substreams)
-				case len(release.Rust.Crates) > 0:
-					printRustCratesNotPublishedMessage(release.Rust)
-				}
-			}
-		}
-
-		fmt.Println("Completed")
-	}
-
-	return nil
+	return global, release, nil
 }
 
 func executeHooks(hooks []string, buildDir string, global *GlobalModel, release *ReleaseModel) {

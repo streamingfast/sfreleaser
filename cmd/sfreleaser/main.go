@@ -47,13 +47,11 @@ func main() {
 		DoctorCmd,
 		BuildCmd,
 		ReleaseCmd,
-		PublishBrewCmd,
 		InitCmd,
 		InstallCmd,
 
 		Group("changelog", "Commands to manipulate changelog files",
 			ChangelogExtractSectionCmd,
-			ChangelogDetectReleaseCmd,
 		),
 
 		Description(`
