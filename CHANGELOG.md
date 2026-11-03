@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The `release` section of `.sfreleaser` now also applies to the `release` subcommands.
 
+- Added `release publish [<version>]`, which waits for the checks of the Homebrew pull request, opening it if needed, publishes a release still in draft (crates or Substreams package first) and merges the pull request. It is safe to run again, and the version defaults to the tag of a GitHub Actions `release` event.
+
 ### Fixed
 
 - Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.
