@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## v0.17.1-rc.3
 
 ### Added
 
-- Added `is_release_pr` and `preview_comment` GitHub Actions outputs to `release detect`, next to `version`, so a workflow can condition on `steps.<id>.outputs.is_release_pr` and post the release notes of the detected version.
+- Added `is_release_pr` and `preview_comment` GitHub Actions outputs to `release detect`, next to `version`, so a workflow can condition on `steps.<id>.outputs.is_release_pr == 'true'` and post the release notes of the detected version in a collapsible block.
 
 ## v0.17.1-rc.2
 
