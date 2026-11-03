@@ -103,7 +103,7 @@ func detectOutputs(version, notes string) [][2]string {
 		notes = "_No release notes in the changelog._"
 	}
 
-	comment := fmt.Sprintf("### Merging this releases `%s`\n\n%s", version, notes)
+	comment := fmt.Sprintf("### Merging this releases `%s`\n\n<details>\n<summary>Release notes</summary>\n\n%s\n\n</details>", version, notes)
 	return [][2]string{{"version", version}, {"is_release_pr", "true"}, {"preview_comment", comment}}
 }
 
