@@ -27,11 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `release publish [<version>]`, which waits for the checks of the Homebrew pull request, opening it if needed, publishes a release still in draft (crates or Substreams package first) and merges the pull request. It is safe to run again, and the version defaults to the tag of a GitHub Actions `release` event.
 
+- Added `release prepare <version>`, everything that can fail before a release goes public: it checks the tokens, builds, creates the draft release, opens the pull request updating the Homebrew formula and waits for its checks. It publishes and merges nothing.
+
 ### Fixed
 
 - Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.
 
 ### Changed
+
+- `release` now checks that the token updating the Homebrew formula, `HOMEBREW_TAP_TOKEN` when set, can read the tap before building anything, so a missing or wrong token fails the release before it exists instead of after.
 
 - Releases of a version with a pre-release suffix (e.g. `v1.4.0-rc.1`) are now marked as pre-release on GitHub, whether created by Goreleaser or with `gh`.
 

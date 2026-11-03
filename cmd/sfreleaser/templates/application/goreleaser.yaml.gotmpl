@@ -134,7 +134,7 @@ release:
     owner: {{ .global.Owner }}
     name: {{ .global.Project }}
 
-{{- if and (not .release.Brew.Disabled) (not .release.NoBinaries) }}
+{{- if and (not .release.Brew.Disabled) (not .release.Brew.Deferred) (not .release.NoBinaries) }}
 brews:
   - name: {{ .global.Project }}
     ids:

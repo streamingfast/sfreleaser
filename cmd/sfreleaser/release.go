@@ -24,8 +24,6 @@ const deleteTagExitHandlerID = "delete-tag"
 var ReleaseCmd = Command(release,
 	"release [<version>]",
 	"Perform the actual release",
-	ReleaseDetectCmd,
-	ReleasePublishCmd,
 	Description(`
 		Based on the type of project your are building, perform the necessary step to perform
 		a GitHub release of your project.
@@ -62,6 +60,9 @@ var ReleaseCmd = Command(release,
 		- {{ .build_dir }}: The final build directory used for the build
 
 	`),
+	ReleaseDetectCmd,
+	ReleasePrepareCmd,
+	ReleasePublishCmd,
 	Flags(func(flags *pflag.FlagSet) {
 		releaseFlags(flags)
 		flags.Bool("publish-now", false, "By default, publish the release to GitHub in draft mode, if the flag is used, the release is published as latest")
@@ -139,6 +140,68 @@ func onReleaseError(err error) {
 }
 
 func release(cmd *cobra.Command, args []string) error {
+	publishNow := sflags.MustGetBool(cmd, "publish-now")
+
+	global, release, err := draftRelease(cmd, args, publishNow, false)
+	if err != nil {
+		return err
+	}
+
+	version := release.Version
+	releaseURL := releaseURL(global, version)
+
+	if publishNow {
+		publishReleaseNow(global, release)
+	} else {
+		fmt.Println()
+		fmt.Println(dedent(`
+			Published release in **draft** mode
+
+			View release at %s
+
+			You can now publish it from the GitHub UI directly, on the release
+			page, press the small pencil button in the right corner to edit the release
+			and then press the 'Publish release' green button (scroll down to the bottom
+			of the page.
+
+			You can also publish from the GitHub CLI directly:
+
+			  gh release edit %s --draft=false
+
+			If something is wrong, you can delete the release from GitHub and try again by
+			doing 'gh release delete %s'.
+		`, releaseURL, version, version))
+
+		fmt.Println()
+		if !global.NonInteractive && confirm(global, "View release right now?") {
+			reviewRelease(releaseURL)
+		}
+
+		fmt.Println()
+		if confirm(global, "Publish release right now?") {
+			publishReleaseNow(global, release)
+		} else {
+			// Mirrors what [publishReleaseNow] would have published, so that the user gets the
+			// exact commands to run manually for every variant that publishes something.
+			if global.Language == LanguageRust {
+				switch {
+				case global.Variant == VariantSubstreams:
+					printSubstreamsRegistryNotPublishedMessage(release.Substreams)
+				case len(release.Rust.Crates) > 0:
+					printRustCratesNotPublishedMessage(release.Rust)
+				}
+			}
+		}
+
+		fmt.Println("Completed")
+	}
+
+	return nil
+}
+
+// draftRelease validates the release, builds it and creates its draft GitHub release. With
+// brewDeferred the Homebrew formula is left to the caller.
+func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bool) (*GlobalModel, *ReleaseModel, error) {
 	global := mustGetGlobal(cmd)
 	release := &ReleaseModel{Version: ""}
 	if len(args) > 0 {
@@ -149,7 +212,6 @@ func release(cmd *cobra.Command, args []string) error {
 	allowDirty := sflags.MustGetBool(cmd, "allow-dirty")
 	changelogPath := global.ResolveFile(sflags.MustGetString(cmd, "changelog-path"))
 	goreleaserDockerImage := sflags.MustGetString(cmd, "goreleaser-docker-image")
-	publishNow := sflags.MustGetBool(cmd, "publish-now")
 	preBuildHooks := sflags.MustGetStringArray(cmd, "pre-build-hooks")
 	uploadExtraAssets := sflags.MustGetStringArray(cmd, "upload-extra-assets")
 
@@ -157,6 +219,7 @@ func release(cmd *cobra.Command, args []string) error {
 	uploadSubstreamsSPKG := sflags.MustGetString(cmd, "upload-substreams-spkg")
 
 	release.populate(cmd, global)
+	release.Brew.Deferred = brewDeferred
 
 	zlog.Debug("starting 'sfreleaser release'",
 		zap.Inline(global),
@@ -184,6 +247,11 @@ func release(cmd *cobra.Command, args []string) error {
 		useGitHubTokenForGh()
 	}
 
+	// 'release prepare' skips the formula of a pre-release, it never needs the tap.
+	if usesGoreleaser(global, release) && !release.Brew.Disabled && !(release.Brew.Deferred && isPrereleaseVersion(release.Version)) {
+		cli.NoError(ensureBrewTapReachable(release.Brew), "The Homebrew formula could not be updated")
+	}
+
 	// Resolved before anything is built or released so that a missing/outdated Cargo is reported
 	// upfront instead of once the GitHub release has already been created.
 	if release.Rust != nil && len(release.Rust.Crates) > 0 {
@@ -203,7 +271,7 @@ func release(cmd *cobra.Command, args []string) error {
 	if !skipChangelogValidation {
 		warning, err := validateChangelogForVersion(changelogPath, version)
 		if err != nil {
-			return fmt.Errorf("changelog validation failed: %w", err)
+			return nil, nil, fmt.Errorf("changelog validation failed: %w", err)
 		}
 		if warning != "" {
 			fmt.Println(warning)
@@ -302,55 +370,7 @@ func release(cmd *cobra.Command, args []string) error {
 		run("gh release upload", version, "--repo", global.Owner+"/"+global.Project, "'"+extraAsset+"'")
 	}
 
-	releaseURL := releaseURL(global, version)
-
-	if publishNow {
-		publishReleaseNow(global, release)
-	} else {
-		fmt.Println()
-		fmt.Println(dedent(`
-			Published release in **draft** mode
-
-			View release at %s
-
-			You can now publish it from the GitHub UI directly, on the release
-			page, press the small pencil button in the right corner to edit the release
-			and then press the 'Publish release' green button (scroll down to the bottom
-			of the page.
-
-			You can also publish from the GitHub CLI directly:
-
-			  gh release edit %s --draft=false
-
-			If something is wrong, you can delete the release from GitHub and try again by
-			doing 'gh release delete %s'.
-		`, releaseURL, version, version))
-
-		fmt.Println()
-		if !global.NonInteractive && confirm(global, "View release right now?") {
-			reviewRelease(releaseURL)
-		}
-
-		fmt.Println()
-		if confirm(global, "Publish release right now?") {
-			publishReleaseNow(global, release)
-		} else {
-			// Mirrors what [publishReleaseNow] would have published, so that the user gets the
-			// exact commands to run manually for every variant that publishes something.
-			if global.Language == LanguageRust {
-				switch {
-				case global.Variant == VariantSubstreams:
-					printSubstreamsRegistryNotPublishedMessage(release.Substreams)
-				case len(release.Rust.Crates) > 0:
-					printRustCratesNotPublishedMessage(release.Rust)
-				}
-			}
-		}
-
-		fmt.Println("Completed")
-	}
-
-	return nil
+	return global, release, nil
 }
 
 func executeHooks(hooks []string, buildDir string, global *GlobalModel, release *ReleaseModel) {

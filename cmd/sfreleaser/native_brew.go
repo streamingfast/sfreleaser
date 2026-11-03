@@ -346,3 +346,37 @@ func runGH(arguments ...string) (string, error) {
 
 	return stdout.String(), nil
 }
+
+// ensureBrewTapReachable checks, before anything is built, that the token updating the formula
+// can read the tap, HOMEBREW_TAP_TOKEN when set, the release token otherwise.
+func ensureBrewTapReachable(brew *BrewReleaseModel) error {
+	tap := brew.TapRepoOwner + "/" + brew.TapRepoName
+
+	token, from := homebrewTapToken(), homebrewTapTokenEnv
+	if token == "" {
+		// The tap is usually public, any token can read it, so the release token would pass this
+		// check while another run is the one writing the formula.
+		if brew.Deferred {
+			return fmt.Errorf("%s is required by 'release prepare', the Homebrew pull request is opened with it", homebrewTapTokenEnv)
+		}
+
+		token, from = mustGitHubToken(), "the release token"
+	}
+
+	cmd := exec.Command("gh", "api", "repos/"+tap, "--jq", ".permissions.push")
+	cmd.Env = append(os.Environ(), "GH_TOKEN="+token)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%s cannot read the Homebrew tap %s: %w: %s", from, tap, err, strings.TrimSpace(stderr.String()))
+	}
+
+	// null for app tokens, and for user tokens the user's role rather than the token's scopes.
+	if strings.TrimSpace(stdout.String()) == "false" {
+		return fmt.Errorf("%s cannot push to the Homebrew tap %s", from, tap)
+	}
+
+	return nil
+}

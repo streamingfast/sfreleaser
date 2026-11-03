@@ -401,7 +401,9 @@ type GitHubReleaseModel struct {
 }
 
 type BrewReleaseModel struct {
-	Disabled     bool
+	Disabled bool
+	// Deferred leaves the formula to 'release prepare', which updates it once the draft exists.
+	Deferred     bool
 	PullRequest  bool
 	TapRepoOwner string
 	TapRepoName  string
