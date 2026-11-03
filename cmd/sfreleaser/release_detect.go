@@ -20,7 +20,7 @@ var ReleaseDetectCmd = Command(releaseDetect,
 	Flags(func(flags *pflag.FlagSet) {
 		flags.String("changelog-path", "CHANGELOG.md", "Path where to find the changelog file, defaults to the 'release.changelog-path' config value")
 		flags.String("before", "", "Git revision of the changelog to compare with, a version already there is not released again, in GitHub Actions defaults to the commit before the push or the base of the pull request")
-		flags.String("github-output", os.Getenv("GITHUB_OUTPUT"), "File receiving the 'version' GitHub Actions output")
+		flags.String("github-output", os.Getenv("GITHUB_OUTPUT"), "File receiving the 'version', 'is_release_pr' and 'preview_comment' GitHub Actions outputs")
 	}),
 	Description(`
 		Decides whether a version should be released from the changelog.
@@ -32,6 +32,10 @@ var ReleaseDetectCmd = Command(releaseDetect,
 
 		The version is printed on standard output, the reason nothing is released on standard
 		error.
+
+		With --github-output, it also writes the GitHub Actions outputs 'version' (empty when
+		nothing is released), 'is_release_pr' ('true' or 'false') and 'preview_comment', the
+		Markdown announcing the version with its release notes (empty when nothing is released).
 	`),
 )
 
@@ -71,8 +75,15 @@ func releaseDetect(cmd *cobra.Command, _ []string) error {
 	}
 
 	if output := sflags.MustGetString(cmd, "github-output"); output != "" {
-		if err := writeGitHubOutput(output, "version", version); err != nil {
-			return fmt.Errorf("writing GitHub output: %w", err)
+		notes := ""
+		if version != "" {
+			notes = readReleaseNotes(changelogPath)
+		}
+
+		for _, out := range detectOutputs(version, notes) {
+			if err := writeGitHubOutput(output, out[0], out[1]); err != nil {
+				return fmt.Errorf("writing GitHub output: %w", err)
+			}
 		}
 	}
 
@@ -81,6 +92,19 @@ func releaseDetect(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+func detectOutputs(version, notes string) [][2]string {
+	if version == "" {
+		return [][2]string{{"version", ""}, {"is_release_pr", "false"}, {"preview_comment", ""}}
+	}
+
+	if notes == "" {
+		notes = "_No release notes in the changelog._"
+	}
+
+	comment := fmt.Sprintf("### Merging this PR will release %s\n\n<details><summary>Release notes</summary>\n\n%s\n\n</details>", version, notes)
+	return [][2]string{{"version", version}, {"is_release_pr", "true"}, {"preview_comment", comment}}
 }
 
 // gitHubEventBaseRevision is the revision a GitHub Actions event compares with, empty for an
