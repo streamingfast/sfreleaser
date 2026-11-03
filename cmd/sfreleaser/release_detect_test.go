@@ -52,8 +52,8 @@ func Test_detectRelease(t *testing.T) {
 
 func Test_detectOutputs(t *testing.T) {
 	assert.Equal(t, [][2]string{{"version", ""}, {"is_release_pr", "false"}, {"preview_comment", ""}}, detectOutputs("", ""))
-	assert.Equal(t, [][2]string{{"version", "v1.2.0"}, {"is_release_pr", "true"}, {"preview_comment", "### Merging this releases `v1.2.0`\n\n<details>\n<summary>Release notes</summary>\n\n- Feature\n\n</details>"}}, detectOutputs("v1.2.0", "- Feature"))
-	assert.Equal(t, "### Merging this releases `v1.2.0`\n\n<details>\n<summary>Release notes</summary>\n\n_No release notes in the changelog._\n\n</details>", detectOutputs("v1.2.0", "")[2][1])
+	assert.Equal(t, [][2]string{{"version", "v1.2.0"}, {"is_release_pr", "true"}, {"preview_comment", "### Merging this PR will release v1.2.0\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>"}}, detectOutputs("v1.2.0", "- Feature"))
+	assert.Equal(t, "### Merging this PR will release v1.2.0\n\n<details><summary>Release notes</summary>\n\n_No release notes in the changelog._\n\n</details>", detectOutputs("v1.2.0", "")[2][1])
 }
 
 func Test_gitHubEventBaseRevision(t *testing.T) {
