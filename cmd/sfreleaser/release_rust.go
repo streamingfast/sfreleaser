@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/streamingfast/cli"
 )
@@ -59,9 +61,24 @@ func verifyRustCratesPublish(rust *RustReleaseModel, allowDirty bool) {
 		extraArgs = append(extraArgs, "--allow-dirty")
 	}
 
+	var published []string
 	for _, command := range rustCratesPublishCommands(rust.Crates, rust.CargoPublishArgs, rust.SinglePublishInvocation, extraArgs...) {
-		run(command...)
+		published = append(published, alreadyPublishedCrates(run(command...))...)
 	}
+
+	cli.Ensure(len(published) == 0, "Already published on the registry, bump the version: %s", strings.Join(published, ", "))
+}
+
+// cargoAlreadyPublishedRegex matches the warning 'cargo publish --dry-run' prints, without
+// failing, for a version the registry already has.
+var cargoAlreadyPublishedRegex = regexp.MustCompile(`crate (\S+@\S+) already exists on`)
+
+func alreadyPublishedCrates(output string) (crates []string) {
+	for _, match := range cargoAlreadyPublishedRegex.FindAllStringSubmatch(output, -1) {
+		crates = append(crates, match[1])
+	}
+
+	return crates
 }
 
 func verifyRustTools() {

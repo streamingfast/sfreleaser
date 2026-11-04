@@ -257,6 +257,7 @@ func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bo
 	if release.Rust != nil && len(release.Rust.Crates) > 0 {
 		verifyRustTools()
 		release.Rust.SinglePublishInvocation = resolveRustCratesSinglePublishInvocation(release.Rust.CratesPublishMode)
+		verifyCratesRegistryAuth(release.Rust)
 	}
 
 	if release.Version == "" {
@@ -327,6 +328,13 @@ func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bo
 		fmt.Println()
 		fmt.Println("Building Substreams package (.spkg)")
 		buildSubstreamsPackage(global)
+	}
+
+	if release.Rust != nil && len(release.Rust.Crates) > 0 {
+		fmt.Println()
+		fmt.Printf("Verifying that the %d configured crate(s) can be published\n", len(release.Rust.Crates))
+		verifyRustCratesVersion(release.Rust, version)
+		verifyRustCratesPublish(release.Rust, allowDirty)
 	}
 
 	if len(uploadExtraAssets) > 0 {
