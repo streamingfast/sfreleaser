@@ -34,7 +34,7 @@ var ReleaseDetectCmd = Command(releaseDetect,
 		error.
 
 		With --github-output, it also writes the GitHub Actions outputs 'version' (empty when
-		nothing is released), 'is_release_pr' ('true' or 'false') and 'preview_comment', the
+		nothing is released), 'is_release_pr' ('true', empty when nothing is released) and 'preview_comment', the
 		Markdown announcing the version with its release notes (empty when nothing is released).
 	`),
 )
@@ -96,7 +96,7 @@ func releaseDetect(cmd *cobra.Command, _ []string) error {
 
 func detectOutputs(version, notes string) [][2]string {
 	if version == "" {
-		return [][2]string{{"version", ""}, {"is_release_pr", "false"}, {"preview_comment", ""}}
+		return [][2]string{{"version", ""}, {"is_release_pr", ""}, {"preview_comment", ""}}
 	}
 
 	if notes == "" {

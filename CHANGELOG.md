@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+
+- `release detect` writes an empty `is_release_pr` output instead of `false` when nothing is released, so a workflow can condition on `steps.<id>.outputs.is_release_pr` directly.
+
+- The PTY is disabled by default when the `CI` environment variable is true, `SFRELEASER_DISABLE_PTY` is no longer needed in CI and still takes precedence when set.
+
 ## v0.17.1-rc.3
 
 ### Added
