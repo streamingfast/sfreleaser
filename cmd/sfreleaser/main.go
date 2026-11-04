@@ -27,8 +27,16 @@ var (
 )
 
 var (
-	ptyDisabled = os.Getenv("SFRELEASER_DISABLE_PTY") == "true"
+	ptyDisabled = ptyDisabledFromEnv()
 )
+
+// ptyDisabledFromEnv honors SFRELEASER_DISABLE_PTY when set, else disables the PTY in CI.
+func ptyDisabledFromEnv() bool {
+	if raw, ok := os.LookupEnv("SFRELEASER_DISABLE_PTY"); ok {
+		return raw == "true"
+	}
+	return isCI()
+}
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == zigCCShimCommand {
