@@ -35,6 +35,10 @@ var ReleasePublishCmd = Command(releasePublish,
 		A release already published, from the GitHub UI for example, only gets its pull request
 		merged, its crates or Substreams package are not published.
 
+		On a GitHub Actions 'pull_request' event of a merged pull request, the draft is first
+		moved to the merge commit, so the tag is on the base branch and not on the pull request's
+		head the draft was built from.
+
 		The version defaults to the tag of the GitHub Actions 'release' event.
 	`),
 	ExamplePrefixed("sfreleaser release publish", `
@@ -101,6 +105,10 @@ func releasePublish(cmd *cobra.Command, args []string) error {
 	}
 
 	if state.IsDraft {
+		if err := targetMergeCommit(global, version); err != nil {
+			return err
+		}
+
 		if release.Rust != nil && len(release.Rust.Crates) > 0 {
 			verifyRustTools()
 			release.Rust.SinglePublishInvocation = resolveRustCratesSinglePublishInvocation(release.Rust.CratesPublishMode)
@@ -259,5 +267,19 @@ func mergeBrewPullRequest(update *brewFormulaUpdate) error {
 	}
 
 	fmt.Printf("Merged %s\n", update.PullRequest)
+	return nil
+}
+
+// targetMergeCommit moves the draft release to the merge commit of the pull request of the
+// GitHub Actions event, when it is a merged pull request.
+func targetMergeCommit(global *GlobalModel, version string) error {
+	_, mergeCommit, err := gitHubEventPullRequest(os.Getenv("GITHUB_EVENT_NAME"), os.Getenv("GITHUB_EVENT_PATH"))
+	if err != nil || mergeCommit == "" {
+		return err
+	}
+
+	fmt.Printf("Moving draft release %s to merge commit %s\n", version, mergeCommit)
+	run("gh release edit", version, "--repo", global.Owner+"/"+global.Project, "--target", mergeCommit)
+
 	return nil
 }

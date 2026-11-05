@@ -92,3 +92,24 @@ func Test_prepareSteps(t *testing.T) {
 	assert.Equal(t, []string{"Publishes the package to [substreams.dev](https://substreams.dev)", "Publishes the [draft release](https://d)"}, prepareSteps(&ReleaseModel{Substreams: &SubstreamsReleaseModel{}}, "", "https://d"))
 	assert.Equal(t, []string{"Publishes the [draft release](https://d)"}, prepareSteps(&ReleaseModel{}, "", "https://d"))
 }
+
+func Test_gitHubEventPullRequest(t *testing.T) {
+	event := filepath.Join(t.TempDir(), "event.json")
+	require.NoError(t, os.WriteFile(event, []byte(`{"pull_request":{"number":321,"merged":false,"merge_commit_sha":"test-merge"}}`), 0o600))
+
+	number, mergeCommit, err := gitHubEventPullRequest("pull_request", event)
+	require.NoError(t, err)
+	assert.Equal(t, 321, number)
+	assert.Equal(t, "", mergeCommit)
+
+	require.NoError(t, os.WriteFile(event, []byte(`{"pull_request":{"number":321,"merged":true,"merge_commit_sha":"abc123"}}`), 0o600))
+	number, mergeCommit, err = gitHubEventPullRequest("pull_request", event)
+	require.NoError(t, err)
+	assert.Equal(t, 321, number)
+	assert.Equal(t, "abc123", mergeCommit)
+
+	number, mergeCommit, err = gitHubEventPullRequest("push", event)
+	require.NoError(t, err)
+	assert.Equal(t, 0, number)
+	assert.Equal(t, "", mergeCommit)
+}

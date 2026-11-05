@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `release prepare` writes the GitHub Actions output `comment`, listing what publishing does (crates, Homebrew pull request and draft release, with their links) followed by the release notes.
+- `release prepare` comments on the GitHub Actions pull request it runs for: the release notes before building, then what publishing does (crates, Homebrew pull request and draft release, with their links).
+
+- `release publish` run for a merged pull request moves the draft release to the merge commit before publishing it, so the tag is on the base branch.
 
 - `release prepare` verifies the configured Rust crates before creating the draft: their `Cargo.toml` version must be the release version, `cargo publish --dry-run` must pass and no crate version may already be on the registry. `build <version>` runs the same checks.
 

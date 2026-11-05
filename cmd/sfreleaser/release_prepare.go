@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -25,9 +26,10 @@ var ReleasePrepareCmd = Command(releasePrepare,
 		Takes the same flags and config as 'sfreleaser release'. An existing draft is only replaced
 		with --yes.
 
-		In GitHub Actions, it writes the output 'comment', the Markdown listing what publishing
-		does (crates, Homebrew pull request and draft release, with their links) followed by the
-		release notes.
+		On a GitHub Actions pull request, it comments the release notes on the pull request
+		before building, then updates that comment with what publishing does: the crates, the
+		Homebrew pull request and the draft release, with their links. A failed comment is only
+		a warning.
 	`),
 	ExamplePrefixed("sfreleaser release prepare", `
 		v1.2.0
@@ -41,6 +43,18 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("the <version> argument is required")
 	}
 
+	pullRequest, _, err := gitHubEventPullRequest(os.Getenv("GITHUB_EVENT_NAME"), os.Getenv("GITHUB_EVENT_PATH"))
+	if err != nil {
+		return err
+	}
+
+	var notes string
+	if pullRequest != 0 {
+		commentGlobal := mustGetGlobal(cmd)
+		notes = readReleaseNotes(commentGlobal.ResolveFile(sflags.MustGetString(cmd, "changelog-path")))
+		commentPullRequest(commentGlobal, pullRequest, releaseComment(args[0], notes, nil), true)
+	}
+
 	global, release, err := draftRelease(cmd, args, false, true)
 	if err != nil {
 		return err
@@ -49,11 +63,11 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 	draftURL := releaseURL(global, release.Version)
 	fmt.Printf("Draft release %s created at %s\n", release.Version, draftURL)
 
-	notes := readReleaseNotes(global.ResolveFile(sflags.MustGetString(cmd, "changelog-path")))
-	steps := prepareSteps(release, "", draftURL)
-
 	if !brewFormulaApplies(global, release) {
-		return writePrepareComment(release.Version, notes, steps)
+		if pullRequest != 0 {
+			commentPullRequest(global, pullRequest, releaseComment(release.Version, notes, prepareSteps(release, "", draftURL)), false)
+		}
+		return nil
 	}
 
 	useGitHubTokenForGh()
@@ -68,8 +82,8 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := writePrepareComment(release.Version, notes, prepareSteps(release, update.PullRequest, draftURL)); err != nil {
-		return err
+	if pullRequest != 0 {
+		commentPullRequest(global, pullRequest, releaseComment(release.Version, notes, prepareSteps(release, update.PullRequest, draftURL)), false)
 	}
 
 	if update.Unchanged {
@@ -107,15 +121,34 @@ func prepareSteps(release *ReleaseModel, brewPullRequest, draftURL string) []str
 	return append(steps, fmt.Sprintf("Publishes the [draft release](%s)", draftURL))
 }
 
-func writePrepareComment(version, notes string, steps []string) error {
-	output := os.Getenv("GITHUB_OUTPUT")
-	if output == "" {
-		return nil
+// commentPullRequest writes body as sfreleaser's comment on the pull request, editing its last
+// comment there, created when there is none and create is set. A failure is only a warning, the
+// comment is not part of the release.
+func commentPullRequest(global *GlobalModel, pullRequest int, body string, create bool) {
+	file, err := os.CreateTemp("", "sfreleaser-comment-*.md")
+	if err != nil {
+		fmt.Printf("Unable to comment on pull request #%d: %s\n", pullRequest, err)
+		return
+	}
+	defer os.Remove(file.Name())
+
+	_, err = file.WriteString(body)
+	if closeErr := file.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		fmt.Printf("Unable to comment on pull request #%d: %s\n", pullRequest, err)
+		return
 	}
 
-	if err := writeGitHubOutput(output, "comment", releaseComment(version, notes, steps)); err != nil {
-		return fmt.Errorf("writing GitHub output: %w", err)
+	useGitHubTokenForGh()
+
+	args := []string{"gh", "pr", "comment", strconv.Itoa(pullRequest), "--repo", global.Owner + "/" + global.Project, "--edit-last", "--body-file", "'" + file.Name() + "'"}
+	if create {
+		args = append(args, "--create-if-none")
 	}
 
-	return nil
+	if _, _, err := maybeResultOf(args...); err != nil {
+		fmt.Printf("Unable to comment on pull request #%d: %s\n", pullRequest, err)
+	}
 }
