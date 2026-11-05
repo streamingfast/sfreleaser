@@ -153,6 +153,36 @@ func gitHubEventBaseRevision(eventName, eventPath string) (string, error) {
 	return event.PullRequest.Base.SHA, nil
 }
 
+// gitHubEventPullRequest is the number of the pull request of a GitHub Actions 'pull_request'
+// event, and its merge commit when it was merged, zero for any other event.
+func gitHubEventPullRequest(eventName, eventPath string) (number int, mergeCommit string, err error) {
+	if eventName != "pull_request" {
+		return 0, "", nil
+	}
+
+	content, err := os.ReadFile(eventPath)
+	if err != nil {
+		return 0, "", fmt.Errorf("reading GitHub event: %w", err)
+	}
+
+	var event struct {
+		PullRequest struct {
+			Number         int    `json:"number"`
+			Merged         bool   `json:"merged"`
+			MergeCommitSHA string `json:"merge_commit_sha"`
+		} `json:"pull_request"`
+	}
+	if err := json.Unmarshal(content, &event); err != nil {
+		return 0, "", fmt.Errorf("decoding GitHub event: %w", err)
+	}
+
+	if !event.PullRequest.Merged {
+		return event.PullRequest.Number, "", nil
+	}
+
+	return event.PullRequest.Number, event.PullRequest.MergeCommitSHA, nil
+}
+
 // detectRelease returns the version to release from the changelog content, or the reason
 // nothing is released. previous is the changelog content before the push, empty when unknown.
 func detectRelease(changelog, previous string, tagExists func(version string) bool) (version string, reason string, err error) {
