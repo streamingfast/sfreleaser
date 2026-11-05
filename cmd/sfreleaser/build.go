@@ -124,7 +124,7 @@ func build(cmd *cobra.Command, args []string) error {
 	// Rust projects that are not Substreams have no Goreleaser artifacts to produce, building
 	// them is about verifying that their crates would be publishable.
 	if global.Language == LanguageRust && global.Variant != VariantSubstreams {
-		return buildRustCrates(cmd, global, allowDirty, preBuildHooks)
+		return buildRustCrates(cmd, global, build.Version, allowDirty, preBuildHooks)
 	}
 
 	var targets []nativeTarget
@@ -214,7 +214,7 @@ func build(cmd *cobra.Command, args []string) error {
 // There is no binary to cross-compile for those, so the build consists in running the pre-build
 // hooks and then verifying, through 'cargo publish --dry-run', that the configured crates would
 // be publishable as-is.
-func buildRustCrates(cmd *cobra.Command, global *GlobalModel, allowDirty bool, preBuildHooks []string) error {
+func buildRustCrates(cmd *cobra.Command, global *GlobalModel, version string, allowDirty bool, preBuildHooks []string) error {
 	if global.Variant == VariantApplication {
 		fmt.Println(dedent(`
 			**Warning** 'sfreleaser' does not build binaries for Rust 'application' projects, it does
@@ -254,6 +254,9 @@ func buildRustCrates(cmd *cobra.Command, global *GlobalModel, allowDirty bool, p
 
 	fmt.Println()
 	fmt.Printf("Verifying that the %d configured crate(s) can be published\n", len(rust.Crates))
+	if version != "" {
+		verifyRustCratesVersion(rust, version)
+	}
 	verifyRustCratesPublish(rust, allowDirty)
 
 	return nil

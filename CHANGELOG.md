@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.17.1-rc.4
 
+### Added
+
+- `release prepare` verifies the configured Rust crates before creating the draft: their `Cargo.toml` version must be the release version, `cargo publish --dry-run` must pass and no crate version may already be on the registry. `build <version>` runs the same checks.
+
+- `release prepare` and `release publish` check that the crates.io token is still valid (not revoked nor expired) before anything is published. The token comes from `CARGO_REGISTRY_TOKEN` or Cargo's credentials file. Whether a scoped token can publish the configured crates is only known when publishing.
+
 ### Changed
 
 - `release detect` writes an empty `is_release_pr` output instead of `false` when nothing is released, so a workflow can condition on `steps.<id>.outputs.is_release_pr` directly.

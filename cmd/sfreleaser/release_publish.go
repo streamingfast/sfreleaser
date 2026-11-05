@@ -104,6 +104,7 @@ func releasePublish(cmd *cobra.Command, args []string) error {
 		if release.Rust != nil && len(release.Rust.Crates) > 0 {
 			verifyRustTools()
 			release.Rust.SinglePublishInvocation = resolveRustCratesSinglePublishInvocation(release.Rust.CratesPublishMode)
+			verifyCratesRegistryAuth(release.Rust)
 		}
 
 		publishReleaseNow(global, release)
