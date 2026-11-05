@@ -54,6 +54,8 @@ func Test_detectOutputs(t *testing.T) {
 	assert.Equal(t, [][2]string{{"version", ""}, {"is_release_pr", ""}, {"preview_comment", ""}}, detectOutputs("", ""))
 	assert.Equal(t, [][2]string{{"version", "v1.2.0"}, {"is_release_pr", "true"}, {"preview_comment", "### Merging this PR will release v1.2.0\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>"}}, detectOutputs("v1.2.0", "- Feature"))
 	assert.Equal(t, "### Merging this PR will release v1.2.0\n\n<details><summary>Release notes</summary>\n\n_No release notes in the changelog._\n\n</details>", detectOutputs("v1.2.0", "")[2][1])
+
+	assert.Equal(t, "### Merging this PR will release v1.2.0\n\n- Publishes the crates `a`, `b`\n- Publishes the [draft release](https://d)\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>", releaseComment("v1.2.0", "- Feature", []string{"Publishes the crates `a`, `b`", "Publishes the [draft release](https://d)"}))
 }
 
 func Test_gitHubEventBaseRevision(t *testing.T) {
@@ -78,4 +80,15 @@ func Test_gitHubEventBaseRevision(t *testing.T) {
 			assert.Equal(t, tt.want, revision)
 		})
 	}
+}
+
+func Test_prepareSteps(t *testing.T) {
+	crates := &ReleaseModel{Rust: &RustReleaseModel{Crates: []string{"a", "b"}}}
+	assert.Equal(t, []string{"Publishes the crates [`a`](https://crates.io/crates/a), [`b`](https://crates.io/crates/b)", "Publishes the [draft release](https://d)"}, prepareSteps(crates, "", "https://d"))
+
+	crates.Rust.CargoPublishArgs = []string{"--registry", "kellnr"}
+	assert.Equal(t, []string{"Publishes the crates `a`, `b`", "Merges the [Homebrew formula pull request](https://b)", "Publishes the [draft release](https://d)"}, prepareSteps(crates, "https://b", "https://d"))
+
+	assert.Equal(t, []string{"Publishes the package to [substreams.dev](https://substreams.dev)", "Publishes the [draft release](https://d)"}, prepareSteps(&ReleaseModel{Substreams: &SubstreamsReleaseModel{}}, "", "https://d"))
+	assert.Equal(t, []string{"Publishes the [draft release](https://d)"}, prepareSteps(&ReleaseModel{}, "", "https://d"))
 }

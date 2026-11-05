@@ -99,12 +99,27 @@ func detectOutputs(version, notes string) [][2]string {
 		return [][2]string{{"version", ""}, {"is_release_pr", ""}, {"preview_comment", ""}}
 	}
 
+	return [][2]string{{"version", version}, {"is_release_pr", "true"}, {"preview_comment", releaseComment(version, notes, nil)}}
+}
+
+// releaseComment is the Markdown announcing the release a pull request makes when merged, the
+// steps of the release as a list followed by the release notes.
+func releaseComment(version, notes string, steps []string) string {
 	if notes == "" {
 		notes = "_No release notes in the changelog._"
 	}
 
-	comment := fmt.Sprintf("### Merging this PR will release %s\n\n<details><summary>Release notes</summary>\n\n%s\n\n</details>", version, notes)
-	return [][2]string{{"version", version}, {"is_release_pr", "true"}, {"preview_comment", comment}}
+	var comment strings.Builder
+	fmt.Fprintf(&comment, "### Merging this PR will release %s\n\n", version)
+	for _, step := range steps {
+		fmt.Fprintf(&comment, "- %s\n", step)
+	}
+	if len(steps) > 0 {
+		comment.WriteString("\n")
+	}
+	fmt.Fprintf(&comment, "<details><summary>Release notes</summary>\n\n%s\n\n</details>", notes)
+
+	return comment.String()
 }
 
 // gitHubEventBaseRevision is the revision a GitHub Actions event compares with, empty for an

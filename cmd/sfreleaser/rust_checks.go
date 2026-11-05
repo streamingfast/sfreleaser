@@ -35,9 +35,7 @@ func verifyCratesRegistryAuth(rust *RustReleaseModel) {
 		return
 	}
 
-	if slices.ContainsFunc(rust.CargoPublishArgs, func(arg string) bool {
-		return arg == "--registry" || arg == "--index" || strings.HasPrefix(arg, "--registry=") || strings.HasPrefix(arg, "--index=")
-	}) {
+	if !publishesToCratesIO(rust) {
 		fmt.Println("Crates are not published to crates.io, skipping the registry token check")
 		return
 	}
@@ -185,4 +183,12 @@ func mismatchedCrateVersions(versions map[string]string, crates []string, versio
 	}
 
 	return mismatches
+}
+
+// publishesToCratesIO reports whether the crates go to crates.io, false when the publish args
+// name another registry.
+func publishesToCratesIO(rust *RustReleaseModel) bool {
+	return !slices.ContainsFunc(rust.CargoPublishArgs, func(arg string) bool {
+		return arg == "--registry" || arg == "--index" || strings.HasPrefix(arg, "--registry=") || strings.HasPrefix(arg, "--index=")
+	})
 }
