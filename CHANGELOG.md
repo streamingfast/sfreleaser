@@ -5,13 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v0.17.1-rc.4
+## Unreleased
 
 ### Added
+
+- `release prepare` writes the GitHub Actions output `comment`, listing what publishing does (crates, Homebrew pull request and draft release, with their links) followed by the release notes.
 
 - `release prepare` verifies the configured Rust crates before creating the draft: their `Cargo.toml` version must be the release version, `cargo publish --dry-run` must pass and no crate version may already be on the registry. `build <version>` runs the same checks.
 
 - `release prepare` and `release publish` check that the crates.io token is still valid (not revoked nor expired) before anything is published. The token comes from `CARGO_REGISTRY_TOKEN` or Cargo's credentials file. Whether a scoped token can publish the configured crates is only known when publishing.
+
+## v0.17.1-rc.4
 
 ### Changed
 
