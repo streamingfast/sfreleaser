@@ -79,7 +79,7 @@ func remoteTagCommit(global *GlobalModel, version string) (string, error) {
 	repository := global.Owner + "/" + global.Project
 	output, _, err := maybeResultOf("gh api", "repos/"+repository+"/commits/refs/tags/"+version, "--jq", ".sha")
 	if err != nil {
-		if strings.Contains(output, "HTTP 404") || strings.Contains(output, "HTTP 422") {
+		if tagLookupNotFound(output) {
 			return "", nil
 		}
 		return "", fmt.Errorf("looking up tag %s: %s", version, strings.TrimSpace(output))
@@ -88,4 +88,16 @@ func remoteTagCommit(global *GlobalModel, version string) (string, error) {
 	commit := strings.TrimSpace(output)
 	cli.Ensure(commit != "", "GitHub returned no commit for tag %s", version)
 	return commit, nil
+}
+
+// tagLookupNotFound reports whether the output of a failed 'gh api' tag lookup means there is no
+// such tag. The output may hold only the JSON error body, without gh's "(HTTP 422)" line.
+func tagLookupNotFound(output string) bool {
+	for _, marker := range []string{`"status":"404"`, `"status":"422"`, "HTTP 404", "HTTP 422"} {
+		if strings.Contains(output, marker) {
+			return true
+		}
+	}
+
+	return false
 }
