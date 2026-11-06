@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- `tools crates setup-trusted-publisher` adds the repository's release workflow (`publish-release.yml` by default) as a crates.io Trusted Publisher of its crates, `--trusted-publishing-only` also refuses API tokens for them from then on.
+
+### Changed
+
+- `release prepare` no longer requires a crates.io token in CI, `cargo publish --dry-run` does not need one. `release publish` still does.
+
+- `release publish` accepts a crates.io Trusted Publishing token (from `rust-lang/crates-io-auth-action`) in `CARGO_REGISTRY_TOKEN`, crates.io checks it when publishing.
+
 ## v0.17.1-rc.5
 
 ### Added

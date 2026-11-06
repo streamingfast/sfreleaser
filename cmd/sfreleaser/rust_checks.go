@@ -27,8 +27,9 @@ const (
 
 // verifyCratesRegistryAuth fails the release when the crates.io token is revoked, expired or
 // unknown, before anything is published. A scoped token cannot be checked against the crates
-// it may publish, crates.io only does that on the publish call itself.
-func verifyCratesRegistryAuth(rust *RustReleaseModel) {
+// it may publish, crates.io only does that on the publish call itself. A missing token fails
+// in CI only when publishing.
+func verifyCratesRegistryAuth(rust *RustReleaseModel, publishing bool) {
 	cli.Ensure(rust != nil, "Rust model should have been populated by now but it's currently nil")
 
 	if devSkipRustCargoPublish {
@@ -42,11 +43,16 @@ func verifyCratesRegistryAuth(rust *RustReleaseModel) {
 
 	token, source := cratesRegistryToken()
 	if token == "" {
-		if isCI() {
+		if publishing && isCI() {
 			cli.Quit("No crates.io token found, set CARGO_REGISTRY_TOKEN to publish the crates")
 		}
 
 		fmt.Println("No crates.io token found in CARGO_REGISTRY_TOKEN nor in Cargo's credentials file, skipping the registry token check")
+		return
+	}
+
+	if strings.HasPrefix(token, cratesIOTrustedPublishingTokenPrefix) {
+		fmt.Printf("The crates.io token from %s is a Trusted Publishing token, crates.io checks it when publishing\n", source)
 		return
 	}
 

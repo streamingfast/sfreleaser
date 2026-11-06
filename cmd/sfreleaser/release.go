@@ -257,7 +257,7 @@ func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bo
 	if release.Rust != nil && len(release.Rust.Crates) > 0 {
 		verifyRustTools()
 		release.Rust.SinglePublishInvocation = resolveRustCratesSinglePublishInvocation(release.Rust.CratesPublishMode)
-		verifyCratesRegistryAuth(release.Rust)
+		verifyCratesRegistryAuth(release.Rust, publishNow)
 	}
 
 	if release.Version == "" {
