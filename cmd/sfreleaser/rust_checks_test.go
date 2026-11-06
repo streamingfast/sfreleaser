@@ -80,3 +80,28 @@ func Test_alreadyPublishedCrates(t *testing.T) {
 	assert.Equal(t, []string{"sf-demo-core@0.1.0", "sf-demo@0.1.0"}, alreadyPublishedCrates(output))
 	assert.Empty(t, alreadyPublishedCrates("   Uploading sf-demo v0.2.0\nwarning: aborting upload due to dry run\n"))
 }
+
+func Test_verifyCratesRegistryAuth_skipsCheck(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("crates.io should not be queried, got %s %s", r.Method, r.URL)
+	}))
+	defer server.Close()
+
+	previous := cratesIOTokenCheckURL
+	cratesIOTokenCheckURL = server.URL
+	defer func() { cratesIOTokenCheckURL = previous }()
+
+	t.Setenv("CARGO_HOME", t.TempDir())
+
+	t.Run("trusted publishing token", func(t *testing.T) {
+		t.Setenv("CI", "true")
+		t.Setenv("CARGO_REGISTRY_TOKEN", "cio_tp_abcdef")
+		verifyCratesRegistryAuth(&RustReleaseModel{Crates: []string{"substreams"}}, true)
+	})
+
+	t.Run("no token in CI when not publishing", func(t *testing.T) {
+		t.Setenv("CI", "true")
+		t.Setenv("CARGO_REGISTRY_TOKEN", "")
+		verifyCratesRegistryAuth(&RustReleaseModel{Crates: []string{"substreams"}}, false)
+	})
+}

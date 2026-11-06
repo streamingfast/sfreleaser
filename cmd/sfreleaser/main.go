@@ -62,6 +62,12 @@ func main() {
 			ChangelogExtractSectionCmd,
 		),
 
+		Group("tools", "Commands to set up the services a release uses",
+			Group("crates", "Commands for crates.io",
+				ToolsCratesSetupTrustedPublisherCmd,
+			),
+		),
+
 		Description(`
 			**Important** This tool is meant for StreamingFast usage and is not a generic release tool. If
 			you like it, feel free to use it but your are not our main target.
