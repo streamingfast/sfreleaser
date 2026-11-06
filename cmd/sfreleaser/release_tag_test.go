@@ -28,3 +28,13 @@ func Test_validVersion_releaseLinePrefix(t *testing.T) {
 		assert.Error(t, validVersion(version), version)
 	}
 }
+
+func Test_tagLookupNotFound(t *testing.T) {
+	jsonOnly := `{"message":"No commit found for SHA: refs/tags/reth-v2.9.0-fh3.1-2-rc.1","documentation_url":"https://docs.github.com/rest/commits/commits#get-a-commit","status":"422"}`
+
+	assert.True(t, tagLookupNotFound(jsonOnly), "JSON body only, as in GitHub Actions")
+	assert.True(t, tagLookupNotFound(jsonOnly+"\ngh: No commit found for SHA: refs/tags/x (HTTP 422)"), "with gh's stderr line")
+	assert.True(t, tagLookupNotFound(`{"message":"Not Found","status":"404"}`), "unknown ref")
+	assert.False(t, tagLookupNotFound(`{"message":"Bad credentials","status":"401"}`), "authentication error")
+	assert.False(t, tagLookupNotFound("gh: Bad credentials (HTTP 401)"), "authentication error from gh")
+}
