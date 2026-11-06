@@ -48,11 +48,17 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	global := mustGetGlobal(cmd)
+	model := &ReleaseModel{Version: args[0]}
+	model.populate(cmd, global)
+	if releaseTagsOnly(global, model) {
+		return prepareTagRelease(cmd, global, args[0], pullRequest)
+	}
+
 	var notes string
 	if pullRequest != 0 {
-		commentGlobal := mustGetGlobal(cmd)
-		notes = readReleaseNotes(commentGlobal.ResolveFile(sflags.MustGetString(cmd, "changelog-path")))
-		commentPullRequest(commentGlobal, pullRequest, releaseComment(args[0], notes, nil), true)
+		notes = readReleaseNotes(global.ResolveFile(sflags.MustGetString(cmd, "changelog-path")))
+		commentPullRequest(global, pullRequest, releaseComment(args[0], notes, nil), true)
 	}
 
 	global, release, err := draftRelease(cmd, args, false, true)
@@ -91,6 +97,32 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 	}
 
 	return waitForBrewPullRequestChecks(update, sflags.MustGetDuration(cmd, "checks-timeout"))
+}
+
+// prepareTagRelease checks the tag of a release that is only its tag and comments on the pull
+// request, nothing is built nor drafted.
+func prepareTagRelease(cmd *cobra.Command, global *GlobalModel, version string, pullRequest int) error {
+	if err := validVersion(version); err != nil {
+		return fmt.Errorf("invalid version: %w", err)
+	}
+
+	if err := os.Chdir(global.WorkingDirectory); err != nil {
+		return fmt.Errorf("changing directory to %q: %w", global.WorkingDirectory, err)
+	}
+
+	useGitHubTokenForGh()
+
+	changelogPath := global.ResolveFile(sflags.MustGetString(cmd, "changelog-path"))
+	if err := prepareTag(global, version, changelogPath); err != nil {
+		return err
+	}
+
+	if pullRequest != 0 {
+		steps := []string{fmt.Sprintf("Creates the tag `%s` on the merge commit", version)}
+		commentPullRequest(global, pullRequest, releaseComment(version, readReleaseNotes(changelogPath), steps), true)
+	}
+
+	return nil
 }
 
 // prepareSteps lists what 'sfreleaser release publish' does with the prepared release, in

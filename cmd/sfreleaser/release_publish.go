@@ -79,8 +79,13 @@ func releasePublish(cmd *cobra.Command, args []string) error {
 
 	cli.NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
 
-	verifyTools(false)
 	useGitHubTokenForGh()
+
+	if releaseTagsOnly(global, release) {
+		return publishTag(global, version)
+	}
+
+	verifyTools(false)
 
 	state, err := publishedReleaseState(global.Owner+"/"+global.Project, version)
 	if err != nil {

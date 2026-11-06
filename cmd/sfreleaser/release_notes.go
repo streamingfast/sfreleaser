@@ -57,7 +57,9 @@ func changelogVersions(changelog io.Reader) (version string, firstSection string
 	return "", firstSection, scanner.Err()
 }
 
-var versionRegex = regexp.MustCompile(`v?([0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9\-_\.]*)`)
+// versionRegex captures the release line prefix of a version like 'reth-v2.9.0-fh3.1', only
+// when a 'v' follows it, then the version.
+var versionRegex = regexp.MustCompile(`(?:([a-z][a-z0-9-]*?-)v)?v?([0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9\-_\.]*)`)
 
 func extractVersionFromHeader(header string) string {
 	matches := headerRegex.FindAllStringSubmatch(header, 1)
@@ -78,12 +80,11 @@ func extractVersionFromHeader(header string) string {
 	normalizedVersion := strings.ToLower(version)
 	if normalizedVersion != "unreleased" && normalizedVersion != "next" {
 		groups := versionRegex.FindStringSubmatch(normalizedVersion)
-		if len(groups) != 2 {
-			// Nothing found, should had 2 group
+		if len(groups) != 3 {
 			return ""
 		}
 
-		return "v" + groups[1]
+		return groups[1] + "v" + groups[2]
 	}
 
 	return ""

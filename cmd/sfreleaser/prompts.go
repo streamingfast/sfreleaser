@@ -85,7 +85,8 @@ func confirm(global *GlobalModel, label string) bool {
 	return yes
 }
 
-var cliVersionRegexp = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+`)
+// cliVersionRegexp accepts a lowercase prefix naming the release line, like 'reth-v2.9.0-fh3.1'.
+var cliVersionRegexp = regexp.MustCompile(`^(?:[a-z][a-z0-9-]*-)?v[0-9]+\.[0-9]+\.[0-9]+`)
 
 func validVersion(in string) error {
 	if strings.ContainsAny(in, " \t\r\n") {
@@ -93,7 +94,7 @@ func validVersion(in string) error {
 	}
 
 	if !cliVersionRegexp.MatchString(in) {
-		return fmt.Errorf(`version %q must of the form "^v{major}.{minor}.{patch}" (end of input is free-form)`, in)
+		return fmt.Errorf(`version %q must be of the form "v{major}.{minor}.{patch}", optionally prefixed like "reth-v{major}.{minor}.{patch}" (end of input is free-form)`, in)
 	}
 
 	return nil
