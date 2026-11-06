@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- `release prepare` and `release publish` of a library publishing no crates nor Substreams package only make its tag: `prepare` checks the changelog and that the tag does not exist yet and comments on the pull request, `publish` creates the tag on the merge commit. The repository's own workflows make the release from the tag, a tag created with the GitHub Actions token does not trigger them, the workflow starts them.
+
+### Changed
+
+- Versions can be prefixed with the release line they belong to, like `reth-v2.9.0-fh3.1`.
+
+- `release detect` keeps the lowercase prefix naming the release line of a changelog header like `## reth-v2.9.0-fh3.1`, for a repository releasing several lines from different branches, instead of reading it as `v2.9.0-fh3.1`.
+
 ## v0.17.1-rc.6
 
 ### Added

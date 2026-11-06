@@ -25,6 +25,15 @@ func Test_extractVersionFromHeader(t *testing.T) {
 		{"v1.0.0 with square bracket", args{"## [1.0.0]"}, "v1.0.0"},
 		{"4.1.5-evm-devnet-fh3.0 with dots", args{"## 4.1.5-evm-devnet-fh3.0"}, "v4.1.5-evm-devnet-fh3.0"},
 		{"v4.1.5-evm-devnet-fh3.0 with dots and prefix v", args{"## v4.1.5-evm-devnet-fh3.0"}, "v4.1.5-evm-devnet-fh3.0"},
+		{"firehose patch level", args{"## v0.1.3-fh3.1-3"}, "v0.1.3-fh3.1-3"},
+		{"hotfix firehose", args{"## v0.1.4-hotfix-fh3.1"}, "v0.1.4-hotfix-fh3.1"},
+		{"release line prefix", args{"## reth-v2.9.0-fh3.1-1"}, "reth-v2.9.0-fh3.1-1"},
+		{"release line prefix with dash", args{"## world-chain-v2.6.0-fh3.1"}, "world-chain-v2.6.0-fh3.1"},
+		{"release line prefix four segments", args{"## base-v2.5.2.8-fh3.1-2"}, "base-v2.5.2.8-fh3.1-2"},
+		{"release line prefix in link", args{"## [op-reth-v2.6.1-fh3.1](https://example.com/releases/tag/op-reth-v2.6.1-fh3.1)"}, "op-reth-v2.6.1-fh3.1"},
+		{"link to tag", args{"## [0.8.1-rc.1](https://example.com/releases/tag/v0.8.1-rc.1)"}, "v0.8.1-rc.1"},
+		{"prefix without v is not a release line", args{"## release-1.2.3"}, "v1.2.3"},
+		{"words before version", args{"## Version v1.2.3"}, "v1.2.3"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
