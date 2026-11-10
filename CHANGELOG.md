@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The release of the new `chain` variant, for a Firehose-enabled chain repository whose own workflows build the release, is only its tag: `release prepare` checks the changelog and that the tag does not exist yet, `release publish` creates the tag on the merge commit. A library publishing no crates nor Substreams package gets a GitHub release again.
+- The release of the new `chain` variant, for a Firehose-enabled chain repository whose own workflows build the release, is only its tag: `release prepare` checks the changelog and that the tag does not exist yet, `release publish` creates the tag on the merge commit, and `sfreleaser release` creates it on `HEAD` once confirmed. A library publishing no crates nor Substreams package gets a GitHub release again.
 
 - `release detect` also writes the GitHub Actions output `variant`, the project's variant in lowercase, so a workflow can skip building a `chain` release.
 

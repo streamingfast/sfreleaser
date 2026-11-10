@@ -142,6 +142,10 @@ func onReleaseError(err error) {
 func release(cmd *cobra.Command, args []string) error {
 	publishNow := sflags.MustGetBool(cmd, "publish-now")
 
+	if global := mustGetGlobal(cmd); releaseTagsOnly(global) {
+		return releaseTag(cmd, global, args, publishNow)
+	}
+
 	global, release, err := draftRelease(cmd, args, publishNow, false)
 	if err != nil {
 		return err
@@ -236,7 +240,6 @@ func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bo
 
 	global.ensureValidForRelease()
 	release.ensureValidForRelease(global)
-	cli.Ensure(!releaseTagsOnly(global), "A release of the chain variant is only its tag, made by 'sfreleaser release prepare' and 'sfreleaser release publish'")
 
 	cli.NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
 
