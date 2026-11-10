@@ -7,16 +7,10 @@ import (
 )
 
 func Test_releaseTagsOnly(t *testing.T) {
-	library := &GlobalModel{Variant: VariantLibrary}
-	application := &GlobalModel{Variant: VariantApplication}
-	substreams := &GlobalModel{Variant: VariantSubstreams}
-
-	assert.True(t, releaseTagsOnly(library, &ReleaseModel{}), "Go library")
-	assert.True(t, releaseTagsOnly(library, &ReleaseModel{Rust: &RustReleaseModel{}}), "Rust library without crates")
-	assert.False(t, releaseTagsOnly(library, &ReleaseModel{Rust: &RustReleaseModel{Crates: []string{"substreams"}}}), "Rust library with crates")
-	assert.False(t, releaseTagsOnly(application, &ReleaseModel{}), "application")
-	assert.False(t, releaseTagsOnly(application, &ReleaseModel{Rust: &RustReleaseModel{}}), "Rust application")
-	assert.False(t, releaseTagsOnly(substreams, &ReleaseModel{Substreams: &SubstreamsReleaseModel{}}), "Substreams package")
+	assert.True(t, releaseTagsOnly(&GlobalModel{Variant: VariantChain}), "chain")
+	assert.False(t, releaseTagsOnly(&GlobalModel{Variant: VariantLibrary}), "library")
+	assert.False(t, releaseTagsOnly(&GlobalModel{Variant: VariantApplication}), "application")
+	assert.False(t, releaseTagsOnly(&GlobalModel{Variant: VariantSubstreams}), "Substreams package")
 }
 
 func Test_validVersion_releaseLinePrefix(t *testing.T) {

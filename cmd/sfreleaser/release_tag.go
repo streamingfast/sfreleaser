@@ -9,12 +9,9 @@ import (
 )
 
 // releaseTagsOnly reports whether the release of this project is only its tag, the own workflows
-// of the repository making the release from it. That is a library publishing neither
-// crates nor a Substreams package.
-func releaseTagsOnly(global *GlobalModel, release *ReleaseModel) bool {
-	return global.Variant == VariantLibrary &&
-		release.Substreams == nil &&
-		(release.Rust == nil || len(release.Rust.Crates) == 0)
+// of the repository making the release from it.
+func releaseTagsOnly(global *GlobalModel) bool {
+	return global.Variant == VariantChain
 }
 
 // prepareTag checks that version can be tagged: the changelog's first section is version and

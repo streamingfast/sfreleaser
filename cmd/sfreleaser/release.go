@@ -236,6 +236,7 @@ func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bo
 
 	global.ensureValidForRelease()
 	release.ensureValidForRelease(global)
+	cli.Ensure(!releaseTagsOnly(global), "A release of the chain variant is only its tag, made by 'sfreleaser release prepare' and 'sfreleaser release publish'")
 
 	cli.NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
 
