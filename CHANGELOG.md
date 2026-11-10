@@ -7,17 +7,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.18.0
 
+- Stable release of [`v0.17.1-rc.9`](https://github.com/streamingfast/sfreleaser/releases/tag/v0.17.1-rc.9), its entries and those of the previous release candidates below cover everything since `v0.17.0`.
+
+- `release detect` no longer writes the `variant` output added in `v0.17.1-rc.9`, a workflow decides on its own whether to start a build.
+
+## v0.17.1-rc.9
+
+### Changed
+
+- The release of the new `chain` variant, for a Firehose-enabled chain repository whose own workflows build the release, is only its tag: `release prepare` checks the changelog and that the tag does not exist yet, `release publish` creates the tag on the merge commit, and `sfreleaser release` creates it on `HEAD` once confirmed. A library publishing no crates nor Substreams package gets a GitHub release again.
+
+- `release detect` also writes the GitHub Actions output `variant`, the project's variant in lowercase, so a workflow can skip building a `chain` release.
+
+## v0.17.1-rc.8
+
+### Fixed
+
+- `release prepare` of a release that is only its tag no longer fails in GitHub Actions when the tag does not exist yet.
+
+## v0.17.1-rc.7
+
 ### Added
 
-- Added `release detect`, which prints the version to release: the first versioned section of the changelog, unless it was already there at `--before` or its tag exists. It fails when that version is not the first section. In GitHub Actions it needs no arguments: `--before` comes from the event, and the `version`, `is_release_pr` (`true`, empty when nothing is released) and `preview_comment` (the release notes of the version in a collapsible block) outputs are written to `GITHUB_OUTPUT`.
+- `release prepare` and `release publish` of a library publishing no crates nor Substreams package only make its tag: `prepare` checks the changelog and that the tag does not exist yet and comments on the pull request, `publish` creates the tag on the merge commit. The repository's own workflows make the release from the tag, a tag created with the GitHub Actions token does not trigger them, the workflow starts them.
 
-- Added `release prepare <version>`, everything that can fail before a release goes public: it checks the tokens, verifies the configured Rust crates (their `Cargo.toml` version must be the release version, `cargo publish --dry-run` must pass and no crate version may already be on the registry), builds, creates the draft release, opens the pull request updating the Homebrew formula and waits for its checks. It publishes and merges nothing. Run for a pull request in GitHub Actions, it comments on it: the release notes before building, then what publishing does (crates, Homebrew pull request and draft release, with their links).
+### Changed
 
-- Added `release publish [<version>]`, which waits for the checks of the Homebrew pull request, opening it if needed, publishes a release still in draft (crates or Substreams package first) and merges the pull request. It is safe to run again, and the version defaults to the tag of a GitHub Actions `release` event. Run for a merged pull request, it moves the draft release to the merge commit before publishing it, so the tag is on the base branch.
+- Versions can be prefixed with the release line they belong to, like `reth-v2.9.0-fh3.1`.
 
-- Added the `chain` variant, for a Firehose-enabled chain repository whose own workflows build the release: its release is only its tag. `release prepare` checks the changelog and that the tag does not exist yet, `release publish` creates the tag on the merge commit, and `sfreleaser release` creates it on `HEAD` once confirmed.
+- `release detect` keeps the lowercase prefix naming the release line of a changelog header like `## reth-v2.9.0-fh3.1`, for a repository releasing several lines from different branches, instead of reading it as `v2.9.0-fh3.1`.
 
-- Added `tools crates setup-trusted-publisher`, which adds the repository's release workflow (`publish-release.yml` by default) as a crates.io Trusted Publisher of its crates, `--trusted-publishing-only` also refuses API tokens for them from then on.
+## v0.17.1-rc.6
+
+### Added
+
+- `tools crates setup-trusted-publisher` adds the repository's release workflow (`publish-release.yml` by default) as a crates.io Trusted Publisher of its crates, `--trusted-publishing-only` also refuses API tokens for them from then on.
+
+### Changed
+
+- `release prepare` no longer requires a crates.io token in CI, `cargo publish --dry-run` does not need one. `release publish` still does.
+
+- `release publish` accepts a crates.io Trusted Publishing token (from `rust-lang/crates-io-auth-action`) in `CARGO_REGISTRY_TOKEN`, crates.io checks it when publishing.
+
+## v0.17.1-rc.5
+
+### Added
+
+- `release prepare` comments on the GitHub Actions pull request it runs for: the release notes before building, then what publishing does (crates, Homebrew pull request and draft release, with their links).
+
+- `release publish` run for a merged pull request moves the draft release to the merge commit before publishing it, so the tag is on the base branch.
+
+- `release prepare` verifies the configured Rust crates before creating the draft: their `Cargo.toml` version must be the release version, `cargo publish --dry-run` must pass and no crate version may already be on the registry. `build <version>` runs the same checks.
+
+- `release prepare` and `release publish` check that the crates.io token is still valid (not revoked nor expired) before anything is published. The token comes from `CARGO_REGISTRY_TOKEN` or Cargo's credentials file. Whether a scoped token can publish the configured crates is only known when publishing.
+
+## v0.17.1-rc.4
+
+### Changed
+
+- `release detect` writes an empty `is_release_pr` output instead of `false` when nothing is released, so a workflow can condition on `steps.<id>.outputs.is_release_pr` directly.
+
+- The PTY is disabled by default when the `CI` environment variable is true, `SFRELEASER_DISABLE_PTY` is no longer needed in CI and still takes precedence when set.
+
+## v0.17.1-rc.3
+
+### Added
+
+- Added `is_release_pr` and `preview_comment` GitHub Actions outputs to `release detect`, next to `version`, so a workflow can condition on `steps.<id>.outputs.is_release_pr == 'true'` and post the release notes of the detected version in a collapsible block.
+
+## v0.17.1-rc.2
+
+### Added
 
 - Added global `--non-interactive` flag (config at `global.non-interactive`) for unattended runs, enabled automatically when the `CI` environment variable is true: nothing is ever prompted, every question is answered "no" and the `<version>` argument of `release` becomes required, so a release stays in draft mode unless `--publish-now` is used.
 
@@ -31,25 +91,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `--builder=native` (config at `release.builder`) to `build` and `release`, which builds Go applications with `go build` and zig as the cgo cross-compiler instead of Goreleaser in the `goreleaser-cross` Docker image, so no Docker is needed. zig is downloaded and cached on first use (or taken from `PATH`, or `--zig-path`, config at `release.zig-path`), and the macOS SDK stubs darwin binaries need are embedded. `release` packages the same archives and `checksums.txt` Goreleaser did, creates the draft release with `gh` and updates the Homebrew formula on the same branch and file as Goreleaser; the formula commit is authored by the release token's account instead of `goreleaser`, and the pull request body credits sfreleaser. Darwin binaries need macOS 11 or later, linux ones glibc 2.17. The embedded macOS SDK only has the stubs Go itself links and the `mach/mach_vm.h` header `prometheus/client_golang` needs, so cgo code using other Apple headers or frameworks needs `goreleaser-docker`. `goreleaser-docker` stays the default.
 
-### Changed
-
-- Versions can be prefixed with the release line they belong to, like `reth-v2.9.0-fh3.1`, and `release detect` keeps that lowercase prefix from a changelog header like `## reth-v2.9.0-fh3.1`, for a repository releasing several lines from different branches.
+- Added `release detect`, which prints the version to release: the first versioned section of the changelog, unless it was already there at `--before` or its tag exists. It fails when that version is not the first section. In GitHub Actions it needs no arguments: `--before` comes from the event and the `version` output is written to `GITHUB_OUTPUT`.
 
 - The `release` section of `.sfreleaser` now also applies to the `release` subcommands.
 
-- `release prepare` and `release publish` check that the crates.io token is still valid (not revoked nor expired) before anything is published. The token comes from `CARGO_REGISTRY_TOKEN` or Cargo's credentials file, and is only required by `release publish`, `cargo publish --dry-run` does not need one. A crates.io Trusted Publishing token (from `rust-lang/crates-io-auth-action`) is accepted, crates.io checks it when publishing.
+- Added `release publish [<version>]`, which waits for the checks of the Homebrew pull request, opening it if needed, publishes a release still in draft (crates or Substreams package first) and merges the pull request. It is safe to run again, and the version defaults to the tag of a GitHub Actions `release` event.
+
+- Added `release prepare <version>`, everything that can fail before a release goes public: it checks the tokens, builds, creates the draft release, opens the pull request updating the Homebrew formula and waits for its checks. It publishes and merges nothing.
+
+### Fixed
+
+- Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.
+
+### Changed
 
 - `release` now checks that the token updating the Homebrew formula, `HOMEBREW_TAP_TOKEN` when set, can read the tap before building anything, so a missing or wrong token fails the release before it exists instead of after.
 
 - Releases of a version with a pre-release suffix (e.g. `v1.4.0-rc.1`) are now marked as pre-release on GitHub, whether created by Goreleaser or with `gh`.
 
 - Only Go applications building binaries go through Goreleaser now. Every other project (Go libraries, Rust crates, Substreams packages, JavaScript) creates its draft GitHub release directly with `gh`, so releasing them no longer requires Docker nor pulls the `goreleaser-cross` image.
-
-- The PTY is disabled by default when the `CI` environment variable is true, `SFRELEASER_DISABLE_PTY` is no longer needed in CI and still takes precedence when set.
-
-### Fixed
-
-- Fixed the missing GitHub token error printing `%!q(MISSING)` instead of the global config file path.
 
 ## v0.17.0
 
