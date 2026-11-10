@@ -81,7 +81,7 @@ func releasePublish(cmd *cobra.Command, args []string) error {
 
 	useGitHubTokenForGh()
 
-	if releaseTagsOnly(global, release) {
+	if releaseTagsOnly(global) {
 		return publishTag(global, version)
 	}
 

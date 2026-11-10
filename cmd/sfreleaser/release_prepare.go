@@ -51,7 +51,7 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 	global := mustGetGlobal(cmd)
 	model := &ReleaseModel{Version: args[0]}
 	model.populate(cmd, global)
-	if releaseTagsOnly(global, model) {
+	if releaseTagsOnly(global) {
 		return prepareTagRelease(cmd, global, args[0], pullRequest)
 	}
 

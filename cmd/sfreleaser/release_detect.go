@@ -20,7 +20,7 @@ var ReleaseDetectCmd = Command(releaseDetect,
 	Flags(func(flags *pflag.FlagSet) {
 		flags.String("changelog-path", "CHANGELOG.md", "Path where to find the changelog file, defaults to the 'release.changelog-path' config value")
 		flags.String("before", "", "Git revision of the changelog to compare with, a version already there is not released again, in GitHub Actions defaults to the commit before the push or the base of the pull request")
-		flags.String("github-output", os.Getenv("GITHUB_OUTPUT"), "File receiving the 'version', 'is_release_pr' and 'preview_comment' GitHub Actions outputs")
+		flags.String("github-output", os.Getenv("GITHUB_OUTPUT"), "File receiving the 'version', 'is_release_pr', 'preview_comment' and 'variant' GitHub Actions outputs")
 	}),
 	Description(`
 		Decides whether a version should be released from the changelog.
@@ -35,7 +35,8 @@ var ReleaseDetectCmd = Command(releaseDetect,
 
 		With --github-output, it also writes the GitHub Actions outputs 'version' (empty when
 		nothing is released), 'is_release_pr' ('true', empty when nothing is released) and 'preview_comment', the
-		Markdown announcing the version with its release notes (empty when nothing is released).
+		Markdown announcing the version with its release notes (empty when nothing is released),
+		and 'variant', the project's variant in lowercase, like 'chain'.
 	`),
 )
 
@@ -80,7 +81,8 @@ func releaseDetect(cmd *cobra.Command, _ []string) error {
 			notes = readReleaseNotes(changelogPath)
 		}
 
-		for _, out := range detectOutputs(version, notes) {
+		outputs := append(detectOutputs(version, notes), [2]string{"variant", global.Variant.Lower()})
+		for _, out := range outputs {
 			if err := writeGitHubOutput(output, out[0], out[1]); err != nil {
 				return fmt.Errorf("writing GitHub output: %w", err)
 			}

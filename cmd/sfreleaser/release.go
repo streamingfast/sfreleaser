@@ -142,6 +142,10 @@ func onReleaseError(err error) {
 func release(cmd *cobra.Command, args []string) error {
 	publishNow := sflags.MustGetBool(cmd, "publish-now")
 
+	if global := mustGetGlobal(cmd); releaseTagsOnly(global) {
+		return releaseTag(cmd, global, args, publishNow)
+	}
+
 	global, release, err := draftRelease(cmd, args, publishNow, false)
 	if err != nil {
 		return err

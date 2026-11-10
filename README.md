@@ -7,6 +7,7 @@ This is a tool we use internally at StreamingFast to automate release process in
 - Language: `Golang`, Variant: `Application`
 - Language: `Golang`, Variant: `Library`
 - Language: `Rust`, Variant: `Library`
+- Variant: `Chain`, any language: the release is only its tag, the repository's own workflows build from it
 
 The `sfreleaser` usually simply wraps instructions for other tools, mainly:
 

@@ -5,16 +5,48 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/streamingfast/cli"
+	"github.com/streamingfast/cli/sflags"
 )
 
 // releaseTagsOnly reports whether the release of this project is only its tag, the own workflows
-// of the repository making the release from it. That is a library publishing neither
-// crates nor a Substreams package.
-func releaseTagsOnly(global *GlobalModel, release *ReleaseModel) bool {
-	return global.Variant == VariantLibrary &&
-		release.Substreams == nil &&
-		(release.Rust == nil || len(release.Rust.Crates) == 0)
+// of the repository making the release from it.
+func releaseTagsOnly(global *GlobalModel) bool {
+	return global.Variant == VariantChain
+}
+
+// releaseTag is 'sfreleaser release' of a release that is only its tag: the tag is checked, then
+// created on HEAD once confirmed.
+func releaseTag(cmd *cobra.Command, global *GlobalModel, args []string, publishNow bool) error {
+	global.ensureValidForRelease()
+	cli.NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
+
+	changelogPath := global.ResolveFile(sflags.MustGetString(cmd, "changelog-path"))
+
+	var version string
+	if len(args) > 0 {
+		version = args[0]
+	} else {
+		version = promptVersion(changelogPath, resolveGitRemote(global))
+	}
+	if err := validVersion(version); err != nil {
+		return fmt.Errorf("invalid version: %w", err)
+	}
+
+	useGitHubTokenForGh()
+	ensureGitSync(global)
+
+	if err := prepareTag(global, version, changelogPath); err != nil {
+		return err
+	}
+
+	if !publishNow && !confirm(global, fmt.Sprintf("Create tag %s on HEAD right now?", version)) {
+		fmt.Println("Tag not created")
+		return nil
+	}
+
+	return publishTag(global, version)
 }
 
 // prepareTag checks that version can be tagged: the changelog's first section is version and

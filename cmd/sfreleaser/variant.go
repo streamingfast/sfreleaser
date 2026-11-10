@@ -17,6 +17,7 @@ import (
 //	Application
 //	Library
 //	Substreams
+//	Chain
 //
 // )
 type Variant uint
