@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.18.1
+
+- The native builder is now the default for Go projects. Set `builder: goreleaser-docker` under `release` in `.sfreleaser` (or pass `--builder=goreleaser-docker`) to keep building in the `goreleaser-cross` image, as a project whose cgo code needs more of the macOS SDK must.
+
 ## v0.18.0
 
 - Stable release of [`v0.17.1-rc.9`](https://github.com/streamingfast/sfreleaser/releases/tag/v0.17.1-rc.9), its entries and those of the previous release candidates below cover everything since `v0.17.0`.
