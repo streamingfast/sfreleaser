@@ -79,7 +79,7 @@ func releaseFlags(flags *pflag.FlagSet) {
 	flags.StringArray("upload-extra-assets", nil, "If provided, add this extra asset file to the release, use a 'pre-build-hooks' to generate the file if needed")
 	flags.String("goreleaser-docker-image", "goreleaser/goreleaser-cross:v1.27", "Full Docker image used to run Goreleaser tool (which perform Go builds and GitHub releases (in all languages))")
 	flags.Bool("no-binaries", false, "Skip building binaries completely; useful for library-only releases or when binaries are built through other means (cannot be used with library variant)")
-	flags.String("builder", "goreleaser-docker", "What builds the binaries of a Go application, 'goreleaser-docker' (Goreleaser in the goreleaser-cross image) or 'native' (go build with zig as the cgo cross-compiler, without Docker)")
+	flags.String("builder", "", "What builds the binaries of a Go application, 'native' (go build with zig as the cgo cross-compiler, without Docker, the default) or 'goreleaser-docker' (Goreleaser in the goreleaser-cross image)")
 	flags.String("zig-path", "", "[native builder only] The zig binary to compile cgo code with, by default the pinned zig version is found on PATH or downloaded to the sfreleaser cache directory")
 	flags.Bool("cgo-disabled", false, "Build the binaries with CGO_ENABLED=0, statically linked, instead of dynamically linked against the libc of the Goreleaser image")
 	flags.Bool("checksums-disabled", false, "Do not attach the 'checksums.txt' asset to the release")

@@ -228,7 +228,7 @@ func (m *BuildModel) populate(cmd *cobra.Command, global *GlobalModel) {
 	m.All = sflags.MustGetBool(cmd, "all")
 	m.Platforms = sflags.MustGetStringArray(cmd, "platform")
 	m.CgoDisabled = sflags.MustGetBool(cmd, "cgo-disabled") || viper.GetBool("release.cgo-disabled")
-	m.Builder = mustGetBuilder(cmd)
+	m.Builder = mustGetBuilder(cmd, global)
 	m.ZigPath = zigPathValue(cmd, global)
 
 	for i, platform := range m.Platforms {
@@ -305,7 +305,7 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 	m.NoBinaries = sflags.MustGetBool(cmd, "no-binaries")
 	m.CgoDisabled = sflags.MustGetBool(cmd, "cgo-disabled")
 	m.ChecksumsDisabled = sflags.MustGetBool(cmd, "checksums-disabled")
-	m.Builder = mustGetBuilder(cmd)
+	m.Builder = mustGetBuilder(cmd, global)
 	m.ZigPath = zigPathValue(cmd, global)
 
 	tapRepoOwner, tapRepoName := tapRepository(global, sflags.MustGetString(cmd, "brew-tap-repo"))
