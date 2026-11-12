@@ -19,18 +19,15 @@ import (
 // )
 type Builder uint
 
-// mustGetBuilder reads the 'builder' flag, else the 'release.builder' config value, so that a
-// '.sfreleaser' file only needs to set it once, under its 'release' section. Unset, Go projects
-// use the native builder and others Goreleaser.
-func mustGetBuilder(cmd *cobra.Command, global *GlobalModel) Builder {
+// mustGetBuilder reads the 'builder' flag. On 'build', where it defaults to empty, the value
+// configured on the 'release' command is used instead, so that a '.sfreleaser' file only needs
+// to set it once, under its 'release' section.
+func mustGetBuilder(cmd *cobra.Command) Builder {
 	raw := sflags.MustGetString(cmd, "builder")
 	if raw == "" {
 		raw = viper.GetString("release.builder")
 	}
 	if raw == "" {
-		if global.Language == LanguageGolang {
-			return BuilderNative
-		}
 		return BuilderGoreleaserDocker
 	}
 
