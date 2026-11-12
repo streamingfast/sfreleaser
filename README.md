@@ -31,7 +31,7 @@ The GitHub Actions `GITHUB_TOKEN` can only write to its own repository, not to t
 
 ### Native builder
 
-`--builder=native` (config at `release.builder`, honored by `build` and `release`) builds the binaries of a Go application with `go build` directly, without Docker nor the `goreleaser-cross` image. Cgo code is cross-compiled with [zig](https://ziglang.org): the pinned zig version is used from `PATH` when it is the one installed, otherwise it is downloaded once to the sfreleaser cache directory (`--zig-path`, config at `release.zig-path`, points to another binary). The macOS SDK stubs darwin binaries link against are embedded in `sfreleaser`, and written to the same cache directory. With `cgo-disabled`, zig is not needed at all.
+`--builder=native` (config at `release.builder`, honored by `build` and `release`), the default for Go projects since `v0.18.1`, builds the binaries of a Go application with `go build` directly, without Docker nor the `goreleaser-cross` image. Cgo code is cross-compiled with [zig](https://ziglang.org): the pinned zig version is used from `PATH` when it is the one installed, otherwise it is downloaded once to the sfreleaser cache directory (`--zig-path`, config at `release.zig-path`, points to another binary). The macOS SDK stubs darwin binaries link against are embedded in `sfreleaser`, and written to the same cache directory. With `cgo-disabled`, zig is not needed at all.
 
 The binaries are written to `build/dist/<os>-<arch>/<binary>`. Linux binaries require glibc 2.17 or later, darwin ones macOS 11 or later. The build does not see the host's C flags, include and library paths, `go env -w` settings nor `go.work`, as with Goreleaser's container.
 
