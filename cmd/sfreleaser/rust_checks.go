@@ -146,16 +146,41 @@ func checkCratesRegistryToken(ctx context.Context, url string, token string) err
 	}
 }
 
-// verifyRustCratesVersion fails when a configured crate's Cargo.toml version is not the
-// release version, the bump must be part of the released commit.
-func verifyRustCratesVersion(rust *RustReleaseModel, version string) {
+// verifyRustCratesPreparation fails when the release commit is not prepared for the crates, see
+// [rustPreparationProblems].
+func verifyRustCratesPreparation(rust *RustReleaseModel, version string) {
+	problems := rustPreparationProblems(rust, version)
+	cli.Ensure(len(problems) == 0, "The release is not prepared:\n- %s", strings.Join(problems, "\n- "))
+}
+
+// rustPreparationProblems lists what the release commit misses for the crates: a Cargo.toml
+// version other than the release version, or a committed Cargo.lock out of date with the
+// Cargo.toml files.
+func rustPreparationProblems(rust *RustReleaseModel, version string) (problems []string) {
 	cli.Ensure(rust != nil, "Rust model should have been populated by now but it's currently nil")
 
 	versions, err := parseCargoMetadataVersions([]byte(resultOf("cargo metadata --format-version 1 --no-deps")))
 	cli.NoError(err, "Unable to read the crates versions")
 
-	mismatches := mismatchedCrateVersions(versions, rust.Crates, strings.TrimPrefix(version, "v"))
-	cli.Ensure(len(mismatches) == 0, "The Cargo.toml version of some crates is not %s: %s", version, strings.Join(mismatches, ", "))
+	if mismatches := mismatchedCrateVersions(versions, rust.Crates, strings.TrimPrefix(version, "v")); len(mismatches) > 0 {
+		problems = append(problems, fmt.Sprintf("The Cargo.toml version of some crates is not `%s`: %s", strings.TrimPrefix(version, "v"), strings.Join(mismatches, ", ")))
+	}
+
+	if cargoLockCommitted() {
+		if _, _, err := maybeResultOf("cargo metadata --format-version 1 --locked"); err != nil {
+			problems = append(problems, "`Cargo.lock` is out of date with the Cargo.toml files, run `cargo update --workspace` and commit it")
+		}
+	}
+
+	return problems
+}
+
+func cargoLockCommitted() bool {
+	manifest := resultOf("cargo locate-project --workspace --message-format plain")
+	lock := filepath.Join(filepath.Dir(strings.TrimSpace(manifest)), "Cargo.lock")
+
+	_, _, err := maybeResultOf("git", "ls-files", "--error-unmatch", "'"+lock+"'")
+	return err == nil
 }
 
 func parseCargoMetadataVersions(metadata []byte) (map[string]string, error) {

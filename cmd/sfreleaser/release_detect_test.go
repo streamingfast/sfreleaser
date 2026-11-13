@@ -55,7 +55,8 @@ func Test_detectOutputs(t *testing.T) {
 	assert.Equal(t, [][2]string{{"version", "v1.2.0"}, {"is_release_pr", "true"}, {"preview_comment", "### Merging this PR will release v1.2.0\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>"}}, detectOutputs("v1.2.0", "- Feature"))
 	assert.Equal(t, "### Merging this PR will release v1.2.0\n\n<details><summary>Release notes</summary>\n\n_No release notes in the changelog._\n\n</details>", detectOutputs("v1.2.0", "")[2][1])
 
-	assert.Equal(t, "### Merging this PR will release v1.2.0\n\n- Publishes the crates `a`, `b`\n- Publishes the [draft release](https://d)\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>", releaseComment("v1.2.0", "- Feature", []string{"Publishes the crates `a`, `b`", "Publishes the [draft release](https://d)"}))
+	assert.Equal(t, "### Merging this PR will release v1.2.0\n\n- Publishes the crates `a`, `b`\n- Publishes the [draft release](https://d)\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>", releaseComment("v1.2.0", "- Feature", []string{"Publishes the crates `a`, `b`", "Publishes the [draft release](https://d)"}, nil))
+	assert.Equal(t, "### Merging this PR will release v1.2.0\n\n#### ⚠️ Preparation\n\n- Stale lock\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>", releaseComment("v1.2.0", "- Feature", nil, []string{"Stale lock"}))
 }
 
 func Test_gitHubEventBaseRevision(t *testing.T) {
