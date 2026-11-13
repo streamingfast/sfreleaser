@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `release prepare` checks that the release commit is prepared for the crates before building: each crate's Cargo.toml has the release version and a committed `Cargo.lock` is up to date. Problems are listed under a "⚠️ Preparation" section of the pull request comment and fail the job. `release` and `build` fail on the same problems.
 
+- On a GitHub Actions pull request, `release prepare` commits what the pre-build hooks changed and pushes it, with the commits the hooks made, to the pull request branch. A pre-release script bumping versions now does it from CI instead of only on the machine of whoever releases.
+
 ## v0.18.1
 
 - sfreleaser now releases itself from CI: a pull request adding a version to the changelog drafts the release, merging it publishes the release and merges the Homebrew formula pull request.

@@ -324,7 +324,9 @@ func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bo
 	if len(preBuildHooks) > 0 {
 		fmt.Println()
 		fmt.Printf("Executing %d pre-build hook(s)\n", len(preBuildHooks))
+		headBefore := strings.TrimSpace(resultOf("git rev-parse HEAD"))
 		executeHooks(preBuildHooks, buildDirectory, global, release)
+		pushPreBuildHooksChanges(global, version, headBefore)
 	}
 
 	// Ensure Substreams package (.spkg) is built when releasing Substreams variant
