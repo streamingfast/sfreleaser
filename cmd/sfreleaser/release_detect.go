@@ -99,18 +99,25 @@ func detectOutputs(version, notes string) [][2]string {
 		return [][2]string{{"version", ""}, {"is_release_pr", ""}, {"preview_comment", ""}}
 	}
 
-	return [][2]string{{"version", version}, {"is_release_pr", "true"}, {"preview_comment", releaseComment(version, notes, nil)}}
+	return [][2]string{{"version", version}, {"is_release_pr", "true"}, {"preview_comment", releaseComment(version, notes, nil, nil)}}
 }
 
 // releaseComment is the Markdown announcing the release a pull request makes when merged, the
 // steps of the release as a list followed by the release notes.
-func releaseComment(version, notes string, steps []string) string {
+func releaseComment(version, notes string, steps, problems []string) string {
 	if notes == "" {
 		notes = "_No release notes in the changelog._"
 	}
 
 	var comment strings.Builder
 	fmt.Fprintf(&comment, "### Merging this PR will release %s\n\n", version)
+	if len(problems) > 0 {
+		comment.WriteString("#### ⚠️ Preparation\n\n")
+		for _, problem := range problems {
+			fmt.Fprintf(&comment, "- %s\n", problem)
+		}
+		comment.WriteString("\n")
+	}
 	for _, step := range steps {
 		fmt.Fprintf(&comment, "- %s\n", step)
 	}

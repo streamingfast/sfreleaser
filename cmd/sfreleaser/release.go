@@ -337,7 +337,7 @@ func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bo
 	if release.Rust != nil && len(release.Rust.Crates) > 0 {
 		fmt.Println()
 		fmt.Printf("Verifying that the %d configured crate(s) can be published\n", len(release.Rust.Crates))
-		verifyRustCratesVersion(release.Rust, version)
+		verifyRustCratesPreparation(release.Rust, version)
 		verifyRustCratesPublish(release.Rust, allowDirty)
 	}
 
