@@ -30,6 +30,10 @@ var ReleasePrepareCmd = Command(releasePrepare,
 		before building, then updates that comment with what publishing does: the crates, the
 		Homebrew pull request and the draft release, with their links. A failed comment is only
 		a warning.
+
+		For crates, it first checks that the release commit is prepared: each crate's Cargo.toml
+		has the release version and a committed Cargo.lock is up to date. Problems are listed
+		under a "Preparation" section of the comment and fail the command.
 	`),
 	ExamplePrefixed("sfreleaser release prepare", `
 		v1.2.0
@@ -58,7 +62,16 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 	var notes string
 	if pullRequest != 0 {
 		notes = readReleaseNotes(global.ResolveFile(sflags.MustGetString(cmd, "changelog-path")))
-		commentPullRequest(global, pullRequest, releaseComment(args[0], notes, nil), true)
+		commentPullRequest(global, pullRequest, releaseComment(args[0], notes, nil, nil), true)
+	}
+
+	if model.Rust != nil && len(model.Rust.Crates) > 0 {
+		if problems := prepareRustProblems(global, model.Rust, args[0]); len(problems) > 0 {
+			if pullRequest != 0 {
+				commentPullRequest(global, pullRequest, releaseComment(args[0], notes, nil, problems), false)
+			}
+			return fmt.Errorf("the release is not prepared:\n- %s", strings.Join(problems, "\n- "))
+		}
 	}
 
 	global, release, err := draftRelease(cmd, args, false, true)
@@ -71,7 +84,7 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 
 	if !brewFormulaApplies(global, release) {
 		if pullRequest != 0 {
-			commentPullRequest(global, pullRequest, releaseComment(release.Version, notes, prepareSteps(release, "", draftURL)), false)
+			commentPullRequest(global, pullRequest, releaseComment(release.Version, notes, prepareSteps(release, "", draftURL), nil), false)
 		}
 		return nil
 	}
@@ -89,7 +102,7 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 	}
 
 	if pullRequest != 0 {
-		commentPullRequest(global, pullRequest, releaseComment(release.Version, notes, prepareSteps(release, update.PullRequest, draftURL)), false)
+		commentPullRequest(global, pullRequest, releaseComment(release.Version, notes, prepareSteps(release, update.PullRequest, draftURL), nil), false)
 	}
 
 	if update.Unchanged {
@@ -97,6 +110,15 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 	}
 
 	return waitForBrewPullRequestChecks(update, sflags.MustGetDuration(cmd, "checks-timeout"))
+}
+
+// prepareRustProblems checks the crates before anything is built, so that the pull request
+// comment lists what the release commit misses.
+func prepareRustProblems(global *GlobalModel, rust *RustReleaseModel, version string) []string {
+	NoError(os.Chdir(global.WorkingDirectory), "Unable to change directory to %q", global.WorkingDirectory)
+	verifyRustTools()
+
+	return rustPreparationProblems(rust, version)
 }
 
 // prepareTagRelease checks the tag of a release that is only its tag and comments on the pull
@@ -119,7 +141,7 @@ func prepareTagRelease(cmd *cobra.Command, global *GlobalModel, version string, 
 
 	if pullRequest != 0 {
 		steps := []string{fmt.Sprintf("Creates the tag `%s` on the merge commit", version)}
-		commentPullRequest(global, pullRequest, releaseComment(version, readReleaseNotes(changelogPath), steps), true)
+		commentPullRequest(global, pullRequest, releaseComment(version, readReleaseNotes(changelogPath), steps, nil), true)
 	}
 
 	return nil

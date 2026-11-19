@@ -255,7 +255,7 @@ func buildRustCrates(cmd *cobra.Command, global *GlobalModel, version string, al
 	fmt.Println()
 	fmt.Printf("Verifying that the %d configured crate(s) can be published\n", len(rust.Crates))
 	if version != "" {
-		verifyRustCratesVersion(rust, version)
+		verifyRustCratesPreparation(rust, version)
 	}
 	verifyRustCratesPublish(rust, allowDirty)
 

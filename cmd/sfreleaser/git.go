@@ -160,6 +160,34 @@ func fetchGitSyncState() gitSyncState {
 	return gitSyncDiverged
 }
 
+// The identity of the commits sfreleaser makes in CI, the dfuse-bot account that also signs the
+// Homebrew tap commits. 46755368 is its GitHub user id, with which GitHub shows the commit as its.
+const (
+	releaseBotName  = "StreamingFast"
+	releaseBotEmail = "46755368+dfuse-bot@users.noreply.github.com"
+)
+
+// pushPreBuildHooksChanges commits what the pre-build hooks changed in the tracked files and
+// pushes it, with the commits they made, to the pull request branch. Only on a GitHub Actions
+// pull request, where the branch was pushed before the hooks ran.
+func pushPreBuildHooksChanges(global *GlobalModel, version, headBefore string) {
+	branch := os.Getenv("GITHUB_HEAD_REF")
+	if branch == "" {
+		return
+	}
+
+	if resultOf("git status --porcelain --untracked-files=no") != "" {
+		run("git", "-c", "user.name="+releaseBotName, "-c", "user.email="+releaseBotEmail, "commit", "--all", "-m", "'prepare release of "+version+"'")
+	}
+
+	if strings.TrimSpace(resultOf("git rev-parse HEAD")) == headBefore {
+		return
+	}
+
+	fmt.Printf("Pushing the pre-build hooks changes to the pull request branch %q\n", branch)
+	run("git", "push", resolveGitRemote(global), "'HEAD:refs/heads/"+branch+"'")
+}
+
 func ensureGitNotDirty() {
 	if isGitDirty() {
 		fmt.Println("Your git repository is dirty, refusing to release (use --allow-dirty to continue even if Git is dirty)")

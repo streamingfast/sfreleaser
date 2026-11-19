@@ -324,7 +324,9 @@ func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bo
 	if len(preBuildHooks) > 0 {
 		fmt.Println()
 		fmt.Printf("Executing %d pre-build hook(s)\n", len(preBuildHooks))
+		headBefore := strings.TrimSpace(resultOf("git rev-parse HEAD"))
 		executeHooks(preBuildHooks, buildDirectory, global, release)
+		pushPreBuildHooksChanges(global, version, headBefore)
 	}
 
 	// Ensure Substreams package (.spkg) is built when releasing Substreams variant
@@ -337,7 +339,7 @@ func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bo
 	if release.Rust != nil && len(release.Rust.Crates) > 0 {
 		fmt.Println()
 		fmt.Printf("Verifying that the %d configured crate(s) can be published\n", len(release.Rust.Crates))
-		verifyRustCratesVersion(release.Rust, version)
+		verifyRustCratesPreparation(release.Rust, version)
 		verifyRustCratesPublish(release.Rust, allowDirty)
 	}
 
