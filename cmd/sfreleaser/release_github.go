@@ -1,12 +1,16 @@
 package main
 
 import (
+	"cmp"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -309,9 +313,36 @@ func releaseGithubNative(global *GlobalModel, release *ReleaseModel, githubRelea
 		assets = append(assets, archive.Path)
 	}
 
+	// The packages are release assets and in the checksums, but not in the Homebrew formula.
+	released := archives
+	if release.Deb {
+		debConfig, err := debConfigFor(global, release)
+		cli.NoError(err, "Unable to describe the Debian packages")
+
+		var packages []debPackage
+		err = runInterruptible(func(ctx context.Context) (err error) {
+			packages, err = buildDebPackages(ctx, debOptions{
+				Name:       global.Binary,
+				Version:    release.Version,
+				ConfigPath: debConfigPath(global, release),
+				Config:     debConfig,
+				Binaries:   binaries,
+				OutputDir:  outputDir,
+				SmokeTest:  release.DebSmokeTest,
+			})
+			return err
+		})
+		cli.NoError(err, "Unable to build the Debian packages")
+
+		released = append(slices.Clone(archives), packages...)
+		for _, pkg := range packages {
+			assets = append(assets, pkg.Path)
+		}
+	}
+
 	if !release.ChecksumsDisabled {
 		checksums := filepath.Join(outputDir, "checksums.txt")
-		cli.NoError(writeChecksums(checksums, archives), "Unable to write %q", checksums)
+		cli.NoError(writeChecksums(checksums, released), "Unable to write %q", checksums)
 		assets = append(assets, checksums)
 	}
 
@@ -351,4 +382,94 @@ func defaultArchiveFiles(root string) []string {
 	sort.Strings(files)
 
 	return files
+}
+
+// debConfigPath is the nfpm configuration file to use as is, empty when it is generated.
+func debConfigPath(global *GlobalModel, release *ReleaseModel) string {
+	if release.DebConfig == "" {
+		return ""
+	}
+
+	return global.ResolveFile(release.DebConfig)
+}
+
+// repositoryMetadata is what GitHub knows of the repository.
+type repositoryMetadata struct {
+	Description string `json:"description"`
+	LicenseInfo struct {
+		SPDXID string `json:"spdxId"`
+	} `json:"licenseInfo"`
+}
+
+// parseRepositoryMetadata decodes 'gh repo view --json description,homepageUrl,licenseInfo'.
+func parseRepositoryMetadata(output string) (repositoryMetadata, error) {
+	var metadata repositoryMetadata
+	if err := json.Unmarshal([]byte(output), &metadata); err != nil {
+		return metadata, err
+	}
+
+	// GitHub's placeholders for a license it could not identify.
+	if metadata.LicenseInfo.SPDXID == "NOASSERTION" {
+		metadata.LicenseInfo.SPDXID = ""
+	}
+
+	return metadata, nil
+}
+
+// debMaintainer is the git identity, 'Name <email>'.
+func debMaintainer() string {
+	name, _, _ := maybeResultOf("git config user.name")
+	email, _, _ := maybeResultOf("git config user.email")
+	name, email = strings.TrimSpace(name), strings.TrimSpace(email)
+	if name == "" || email == "" {
+		return ""
+	}
+
+	return fmt.Sprintf("%s <%s>", name, email)
+}
+
+// debConfigFor is the package description the nfpm configuration is generated from. What is not
+// configured is inferred from the repository files first (the license from the LICENSE file, the
+// description from the README, the homepage from the GitHub repository) and only the description
+// and license still missing are read from the GitHub repository. The maintainer is the git
+// identity.
+func debConfigFor(global *GlobalModel, release *ReleaseModel) (debConfigOptions, error) {
+	options := debConfigOptions{
+		Name:        global.Binary,
+		Maintainer:  cmp.Or(release.DebMaintainer, debMaintainer()),
+		Description: release.DebDescription,
+		Homepage:    cmp.Or(release.DebHomepage, fmt.Sprintf("https://github.com/%s/%s", global.Owner, global.Project)),
+		License:     release.DebLicense,
+		Depends:     release.DebDepends,
+		Recommends:  release.DebRecommends,
+		Dir:         global.ResolveFile(release.DebDir),
+	}
+
+	if options.License == "" && release.LicenseRelativePath != nil {
+		options.License = detectLicense(global.ResolveFile(*release.LicenseRelativePath))
+	}
+
+	if options.Description == "" && release.ReadmeRelativePath != nil {
+		options.Description = readmeDescription(global.ResolveFile(*release.ReadmeRelativePath))
+	}
+
+	if options.Description == "" || options.License == "" {
+		var metadata repositoryMetadata
+		if output, _, err := maybeResultOf("gh repo view", global.Owner+"/"+global.Project, "--json description,licenseInfo"); err != nil {
+			zlog.Debug("unable to read the repository metadata", zap.Error(err))
+		} else if metadata, err = parseRepositoryMetadata(output); err != nil {
+			zlog.Debug("unable to decode the repository metadata", zap.Error(err))
+		}
+
+		options.Description = cmp.Or(options.Description, metadata.Description)
+		options.License = cmp.Or(options.License, metadata.LicenseInfo.SPDXID)
+	}
+
+	options.Description = cmp.Or(options.Description, global.Binary)
+
+	if options.Maintainer == "" {
+		return options, errors.New(`no maintainer for the Debian packages, set "deb-maintainer" ('Name <email>') or the git "user.name" and "user.email"`)
+	}
+
+	return options, nil
 }
