@@ -83,6 +83,16 @@ func releaseFlags(flags *pflag.FlagSet) {
 	flags.String("zig-path", "", "[native builder only] The zig binary to compile cgo code with, by default the pinned zig version is found on PATH or downloaded to the sfreleaser cache directory")
 	flags.Bool("cgo-disabled", false, "Build the binaries with CGO_ENABLED=0, statically linked, instead of dynamically linked against the libc of the Goreleaser image")
 	flags.Bool("checksums-disabled", false, "Do not attach the 'checksums.txt' asset to the release")
+	flags.Bool("deb", false, "[Native builder only] Build a '.deb' package per Linux binary with nfpm and attach them to the release, the nfpm configuration is generated from the 'deb-*' values and the packaging directory, see the README")
+	flags.String("deb-config", "", "[Deb only] Use this nfpm configuration file as is (relative to the project root) instead of generating it, it is rendered with the PKG_VERSION (without its 'v'), PKG_ARCH ('amd64' or 'arm64') and PKG_BINARY (path of the binary) environment variables")
+	flags.String("deb-dir", "packaging/deb", "[Deb only] The packaging directory: files under 'rootfs/' are installed at the same path in the package, 'preinstall.sh', 'postinstall.sh', 'preremove.sh' and 'postremove.sh' are the maintainer scripts")
+	flags.String("deb-maintainer", "", "[Deb only] The package maintainer, 'Name <email>', defaults to the git 'user.name' and 'user.email'")
+	flags.String("deb-description", "", "[Deb only] The package description, defaults to the first paragraph of the README, then the GitHub repository description, then the binary name")
+	flags.String("deb-license", "", "[Deb only] The package license, an SPDX identifier such as 'Apache-2.0', defaults to the one detected in the LICENSE file, then by GitHub")
+	flags.String("deb-homepage", "", "[Deb only] The package homepage, defaults to the GitHub repository URL")
+	flags.StringArray("deb-depends", nil, "[Deb only] The packages the package depends on")
+	flags.StringArray("deb-recommends", nil, "[Deb only] The packages the package recommends")
+	flags.Bool("deb-smoke-test", false, "[Deb only] Install every '.deb' package in a clean Debian container (requires Docker) before releasing")
 	flags.Bool("skip-changelog-validation", false, "Skip validation that changelog contains an entry for the release version")
 
 	// Brew Flags

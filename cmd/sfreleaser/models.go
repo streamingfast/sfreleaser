@@ -201,6 +201,19 @@ func (m *ReleaseModel) validateForRelease(global *GlobalModel) []string {
 		errors = append(errors, `The "noBinaries" flag cannot be used with library variant as libraries already skip binary builds by default`)
 	}
 
+	if m.Deb {
+		switch {
+		case !usesGoreleaser(global, m) || m.Builder != BuilderNative:
+			errors = append(errors, `The "deb" flag requires a Go application built with the native builder, without "no-binaries"`)
+		case m.DebConfig == "":
+			// Generated
+		default:
+			if _, err := os.Stat(global.ResolveFile(m.DebConfig)); err != nil {
+				errors = append(errors, fmt.Sprintf(`The "deb-config" file %q cannot be read: %s`, m.DebConfig, err))
+			}
+		}
+	}
+
 	if m.Rust != nil {
 		if err := validateRustCratesPublishMode(m.Rust.CratesPublishMode); err != nil {
 			errors = append(errors, fmt.Sprintf(`The "rust-cargo-publish-mode" config value is invalid: %s`, err))
@@ -264,6 +277,22 @@ type ReleaseModel struct {
 	// ChecksumsDisabled skips the 'checksums.txt' release asset.
 	ChecksumsDisabled bool
 
+	// Deb builds a Debian package per Linux binary with nfpm and attaches them to the release.
+	// Requires the native builder.
+	Deb bool
+	// DebConfig is a nfpm configuration file to use as is, the configuration is generated when
+	// empty, from the packaging directory DebDir and the Deb* values below.
+	DebConfig      string
+	DebDir         string
+	DebMaintainer  string
+	DebDescription string
+	DebLicense     string
+	DebHomepage    string
+	DebDepends     []string
+	DebRecommends  []string
+	// DebSmokeTest installs every Debian package in a container once built.
+	DebSmokeTest bool
+
 	// Builder builds the binaries of a Go application.
 	Builder Builder
 	// ZigPath overrides the zig binary of the native builder.
@@ -305,6 +334,16 @@ func (m *ReleaseModel) populate(cmd *cobra.Command, global *GlobalModel) {
 	m.NoBinaries = sflags.MustGetBool(cmd, "no-binaries")
 	m.CgoDisabled = sflags.MustGetBool(cmd, "cgo-disabled")
 	m.ChecksumsDisabled = sflags.MustGetBool(cmd, "checksums-disabled")
+	m.Deb = sflags.MustGetBool(cmd, "deb")
+	m.DebConfig = sflags.MustGetString(cmd, "deb-config")
+	m.DebDir = sflags.MustGetString(cmd, "deb-dir")
+	m.DebMaintainer = sflags.MustGetString(cmd, "deb-maintainer")
+	m.DebDescription = sflags.MustGetString(cmd, "deb-description")
+	m.DebLicense = sflags.MustGetString(cmd, "deb-license")
+	m.DebHomepage = sflags.MustGetString(cmd, "deb-homepage")
+	m.DebDepends = sflags.MustGetStringArray(cmd, "deb-depends")
+	m.DebRecommends = sflags.MustGetStringArray(cmd, "deb-recommends")
+	m.DebSmokeTest = sflags.MustGetBool(cmd, "deb-smoke-test")
 	m.Builder = mustGetBuilder(cmd, global)
 	m.ZigPath = zigPathValue(cmd, global)
 
