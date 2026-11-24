@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.19.2
+
+- Fix `.deb` packaging failing with `requires go >= 1.27.4 (running go 1.24.13; GOTOOLCHAIN=local)` when the project released uses an older Go than nfpm: nfpm is now embedded in sfreleaser instead of being run from `PATH` or through `go run`, so it no longer depends on the Go version of the project nor on an `nfpm` install.
+
 ## v0.19.1
 
 - `release --publish-now` and `release publish` refuse to continue when more than one GitHub release exists for the version, as when a local release ran while the CI release workflow was drafting the same version, listing the releases to delete instead of failing to publish.

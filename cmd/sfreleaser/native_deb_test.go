@@ -1,11 +1,15 @@
 package main
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/blakesmith/ar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,37 +21,80 @@ func Test_debFileName(t *testing.T) {
 
 func Test_debEnv(t *testing.T) {
 	assert.Equal(t,
-		[]string{"PKG_VERSION=1.2.3", "PKG_ARCH=arm64", "PKG_BINARY=/bin/app"},
+		map[string]string{"PKG_VERSION": "1.2.3", "PKG_ARCH": "arm64", "PKG_BINARY": "/bin/app"},
 		debEnv("v1.2.3", nativeTargetByID("linux-arm64"), "/bin/app"),
 	)
 }
 
-func Test_buildDebPackages(t *testing.T) {
-	bin := t.TempDir()
-	// A fake nfpm writing the environment it received to the '--target' file.
-	script := `#!/bin/sh
-while [ $# -gt 0 ]; do
-  if [ "$1" = "--target" ]; then target="$2"; fi
-  shift
-done
-echo "$PKG_VERSION $PKG_ARCH $PKG_BINARY" > "$target"
-`
-	require.NoError(t, os.WriteFile(filepath.Join(bin, "nfpm"), []byte(script), 0o755))
-	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+// debControl returns the 'control' file of the Debian package at path.
+func debControl(t *testing.T, path string) string {
+	t.Helper()
+
+	file, err := os.Open(path)
+	require.NoError(t, err)
+	defer file.Close()
+
+	archive := ar.NewReader(file)
+	for {
+		header, err := archive.Next()
+		require.NoError(t, err, "no control archive in %s", path)
+		if header.Name != "control.tar.gz" {
+			continue
+		}
+
+		compressed, err := gzip.NewReader(archive)
+		require.NoError(t, err)
+
+		control := tar.NewReader(compressed)
+		for {
+			entry, err := control.Next()
+			require.NoError(t, err, "no control file in %s", path)
+			if strings.TrimPrefix(entry.Name, "./") == "control" {
+				content, err := io.ReadAll(control)
+				require.NoError(t, err)
+				return string(content)
+			}
+		}
+	}
+}
+
+// writeFakeBinaries writes a binary per target id under a temporary directory.
+func writeFakeBinaries(t *testing.T, ids ...string) map[string]string {
+	t.Helper()
 
 	work := t.TempDir()
 	binaries := map[string]string{}
-	for _, id := range []string{"darwin-arm64", "linux-amd64", "linux-arm64"} {
+	for _, id := range ids {
 		binaries[id] = filepath.Join(work, id, "app")
+		require.NoError(t, os.MkdirAll(filepath.Dir(binaries[id]), 0o755))
+		require.NoError(t, os.WriteFile(binaries[id], []byte("#!/bin/sh\n"), 0o755))
 	}
 
-	output := filepath.Join(work, "dist")
+	return binaries
+}
+
+func Test_buildDebPackages(t *testing.T) {
+	config := filepath.Join(t.TempDir(), "nfpm.yaml")
+	require.NoError(t, os.WriteFile(config, []byte(`name: app
+arch: ${PKG_ARCH}
+platform: linux
+version: ${PKG_VERSION}
+maintainer: Jane <jane@example.com>
+description: ${APP_DESCRIPTION}
+contents:
+  - src: ${PKG_BINARY}
+    dst: /usr/bin/app
+    expand: true
+`), 0o644))
+	t.Setenv("APP_DESCRIPTION", "From the environment")
+
+	binaries := writeFakeBinaries(t, "darwin-arm64", "linux-amd64", "linux-arm64")
 	packages, err := buildDebPackages(t.Context(), debOptions{
 		Name:       "app",
 		Version:    "v1.2.3",
-		ConfigPath: "nfpm.yaml",
+		ConfigPath: config,
 		Binaries:   binaries,
-		OutputDir:  output,
+		OutputDir:  filepath.Join(t.TempDir(), "dist"),
 	})
 	require.NoError(t, err)
 
@@ -56,9 +103,10 @@ echo "$PKG_VERSION $PKG_ARCH $PKG_BINARY" > "$target"
 	assert.Equal(t, "app_1.2.3_amd64.deb", packages[0].Name)
 	assert.Equal(t, "app_1.2.3_arm64.deb", packages[1].Name)
 
-	content, err := os.ReadFile(packages[1].Path)
-	require.NoError(t, err)
-	assert.Equal(t, "1.2.3 arm64 "+binaries["linux-arm64"]+"\n", string(content))
+	control := debControl(t, packages[1].Path)
+	assert.Contains(t, control, "Version: 1.2.3\n")
+	assert.Contains(t, control, "Architecture: arm64\n")
+	assert.Contains(t, control, "Description: From the environment\n")
 
 	sum, err := fileSHA256(packages[1].Path)
 	require.NoError(t, err)
@@ -66,17 +114,19 @@ echo "$PKG_VERSION $PKG_ARCH $PKG_BINARY" > "$target"
 }
 
 func Test_buildDebPackages_nfpmFails(t *testing.T) {
-	bin := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(bin, "nfpm"), []byte("#!/bin/sh\nexit 1\n"), 0o755))
-	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	output := t.TempDir()
+	config := filepath.Join(t.TempDir(), "nfpm.yaml")
+	require.NoError(t, os.WriteFile(config, []byte("name: app\nversion: 1.0.0\ncontents:\n  - src: /does/not/exist\n    dst: /usr/bin/app\n"), 0o644))
 
 	_, err := buildDebPackages(t.Context(), debOptions{
-		Name:      "app",
-		Version:   "v1.0.0",
-		Binaries:  map[string]string{"linux-amd64": "app"},
-		OutputDir: t.TempDir(),
+		Name:       "app",
+		Version:    "v1.0.0",
+		ConfigPath: config,
+		Binaries:   writeFakeBinaries(t, "linux-amd64"),
+		OutputDir:  output,
 	})
 	require.ErrorContains(t, err, "packaging app_1.0.0_amd64.deb with nfpm")
+	assert.NoFileExists(t, filepath.Join(output, "app_1.0.0_amd64.deb"))
 }
 
 func TestReleaseModel_validateForRelease_deb(t *testing.T) {
@@ -177,33 +227,20 @@ func Test_renderNfpmConfig_binaryConflict(t *testing.T) {
 }
 
 func Test_buildDebPackages_generatedConfig(t *testing.T) {
-	bin := t.TempDir()
-	// A fake nfpm copying the configuration it was given to the '--target' file.
-	script := `#!/bin/sh
-while [ $# -gt 0 ]; do
-  case "$1" in --config) config="$2";; --target) target="$2";; esac
-  shift
-done
-cp "$config" "$target"
-`
-	require.NoError(t, os.WriteFile(filepath.Join(bin, "nfpm"), []byte(script), 0o755))
-	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-
 	packages, err := buildDebPackages(t.Context(), debOptions{
 		Name:      "app",
 		Version:   "v1.2.3",
 		Config:    debConfigOptions{Name: "app", Maintainer: "Jane <jane@example.com>", Dir: filepath.Join(t.TempDir(), "none")},
-		Binaries:  map[string]string{"linux-amd64": "bin/app"},
+		Binaries:  writeFakeBinaries(t, "linux-amd64"),
 		OutputDir: t.TempDir(),
 	})
 	require.NoError(t, err)
 	require.Len(t, packages, 1)
 
-	content, err := os.ReadFile(packages[0].Path)
-	require.NoError(t, err)
-	assert.Contains(t, string(content), `version: "1.2.3"`)
-	assert.Contains(t, string(content), `arch: "amd64"`)
-	assert.Contains(t, string(content), `maintainer: "Jane <jane@example.com>"`)
+	control := debControl(t, packages[0].Path)
+	assert.Contains(t, control, "Version: 1.2.3\n")
+	assert.Contains(t, control, "Architecture: amd64\n")
+	assert.Contains(t, control, "Maintainer: Jane <jane@example.com>\n")
 }
 
 func Test_parseRepositoryMetadata(t *testing.T) {
