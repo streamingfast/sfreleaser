@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/bobg/go-generics/v2/slices"
 	versioning "github.com/hashicorp/go-version"
 	"github.com/streamingfast/cli"
 	"go.uber.org/zap"
 )
 
 func promptLanguage() Language {
-	return cli.PromptSelect("Project language", slices.Filter(LanguageNames(), isSupportedLanguage), ParseLanguage)
+	return cli.PromptSelect("Project language", slices.DeleteFunc(LanguageNames(), func(x string) bool { return !isSupportedLanguage(x) }), ParseLanguage)
 }
 
 func promptVariant() Variant {
-	return cli.PromptSelect("Project variant", slices.Filter(VariantNames(), isSupportedVariant), ParseVariant)
+	return cli.PromptSelect("Project variant", slices.DeleteFunc(VariantNames(), func(x string) bool { return !isSupportedVariant(x) }), ParseVariant)
 }
 
 func promptVersion(changelogPath string, gitRemote string) string {

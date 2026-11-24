@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-)
 
-// nfpmModule is run through 'go run' when 'nfpm' is not installed, the native builder already
-// requires the Go toolchain.
-const nfpmModule = "github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.49.0"
+	"github.com/goreleaser/nfpm/v2"
+	_ "github.com/goreleaser/nfpm/v2/deb"
+)
 
 // debSmokeTestImage is the image the packages are installed in by the smoke test.
 const debSmokeTestImage = "debian:stable-slim"
@@ -33,23 +33,52 @@ func debFileName(name, version string, target nativeTarget) string {
 // debEnv is the environment the nfpm configuration is rendered with, on top of the current one:
 // PKG_VERSION (without its 'v'), PKG_ARCH and PKG_BINARY, the absolute path of the binary
 // built for the architecture.
-func debEnv(version string, target nativeTarget, binary string) []string {
-	return []string{
-		"PKG_VERSION=" + strings.TrimPrefix(version, "v"),
-		"PKG_ARCH=" + debArch(target),
-		"PKG_BINARY=" + binary,
+func debEnv(version string, target nativeTarget, binary string) map[string]string {
+	return map[string]string{
+		"PKG_VERSION": strings.TrimPrefix(version, "v"),
+		"PKG_ARCH":    debArch(target),
+		"PKG_BINARY":  binary,
 	}
 }
 
-// nfpmCommand is the command packaging configPath to the file target, the installed 'nfpm' or
-// the pinned version through 'go run'.
-func nfpmCommand(configPath, targetPath string) (string, []string) {
-	args := []string{"package", "--config", configPath, "--packager", "deb", "--target", targetPath}
-	if path, err := exec.LookPath("nfpm"); err == nil {
-		return path, args
+// nfpmPackage packages configPath to the file targetPath with the nfpm library, which is
+// embedded so the packaging does not depend on the Go version of the project released. The
+// configuration is expanded with the current environment, env taking precedence.
+func nfpmPackage(configPath, targetPath string, env map[string]string) (err error) {
+	config, err := nfpm.ParseFileWithEnvMapping(configPath, func(key string) string {
+		if value, found := env[key]; found {
+			return value
+		}
+		return os.Getenv(key)
+	})
+	if err != nil {
+		return fmt.Errorf("parsing %s: %w", configPath, err)
 	}
 
-	return "go", append([]string{"run", nfpmModule}, args...)
+	info, err := config.Get("deb")
+	if err != nil {
+		return err
+	}
+	info = nfpm.WithDefaults(info)
+	info.Target = targetPath
+
+	packager, err := nfpm.Get("deb")
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(targetPath)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = errors.Join(err, file.Close())
+		if err != nil {
+			os.Remove(targetPath)
+		}
+	}()
+
+	return packager.Package(info, file)
 }
 
 type debOptions struct {
@@ -107,14 +136,8 @@ func buildDebPackages(ctx context.Context, options debOptions) ([]debPackage, er
 			}
 		}
 
-		name, args := nfpmCommand(configPath, pkg.Path)
-		cmd := exec.CommandContext(ctx, name, args...)
-		cmd.Env = append(os.Environ(), debEnv(options.Version, target, binary)...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
 		fmt.Printf("Packaging %s\n", pkg.Name)
-		if err := cmd.Run(); err != nil {
+		if err := nfpmPackage(configPath, pkg.Path, debEnv(options.Version, target, binary)); err != nil {
 			return nil, fmt.Errorf("packaging %s with nfpm: %w", pkg.Name, err)
 		}
 
