@@ -35,7 +35,8 @@ var ReleaseDetectCmd = Command(releaseDetect,
 
 		With --github-output, it also writes the GitHub Actions outputs 'version' (empty when
 		nothing is released), 'is_release_pr' ('true', empty when nothing is released) and 'preview_comment', the
-		Markdown announcing the version with its release notes (empty when nothing is released).
+		Markdown announcing the version with its release notes, telling to wait for the current
+		workflow run before merging (empty when nothing is released).
 	`),
 )
 
@@ -80,7 +81,7 @@ func releaseDetect(cmd *cobra.Command, _ []string) error {
 			notes = readReleaseNotes(changelogPath)
 		}
 
-		for _, out := range detectOutputs(version, notes) {
+		for _, out := range detectOutputs(version, notes, gitHubRunURL()) {
 			if err := writeGitHubOutput(output, out[0], out[1]); err != nil {
 				return fmt.Errorf("writing GitHub output: %w", err)
 			}
@@ -94,39 +95,87 @@ func releaseDetect(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func detectOutputs(version, notes string) [][2]string {
+func detectOutputs(version, notes, runURL string) [][2]string {
 	if version == "" {
 		return [][2]string{{"version", ""}, {"is_release_pr", ""}, {"preview_comment", ""}}
 	}
 
-	return [][2]string{{"version", version}, {"is_release_pr", "true"}, {"preview_comment", releaseComment(version, notes, nil, nil)}}
+	return [][2]string{{"version", version}, {"is_release_pr", "true"}, {"preview_comment", releaseComment{Version: version, Notes: notes, Status: releaseCommentPending, RunURL: runURL}.Markdown()}}
 }
 
-// releaseComment is the Markdown announcing the release a pull request makes when merged, the
-// steps of the release as a list followed by the release notes.
-func releaseComment(version, notes string, steps, problems []string) string {
+// releaseCommentStatus is where the draft flow of a release pull request stands, shown as a
+// notice at the top of its comment.
+type releaseCommentStatus int
+
+const (
+	// releaseCommentPending tells to wait, the draft flow is still running.
+	releaseCommentPending releaseCommentStatus = iota
+	// releaseCommentFailed tells not to merge, the draft flow failed.
+	releaseCommentFailed
+	// releaseCommentReady has no notice, the release is drafted and merging publishes it.
+	releaseCommentReady
+)
+
+// releaseComment is the Markdown announcing the release a pull request makes when merged.
+type releaseComment struct {
+	Version string
+	Notes   string
+	Status  releaseCommentStatus
+	// RunURL is the GitHub Actions run of the draft flow linked by the notice, if known.
+	RunURL string
+	// Steps are what publishing does, in Markdown.
+	Steps []string
+	// Problems are what the release commit misses, in Markdown.
+	Problems []string
+}
+
+// Markdown renders the comment: the status notice, the steps of the release as a list and the
+// release notes.
+func (c releaseComment) Markdown() string {
+	notes := c.Notes
 	if notes == "" {
 		notes = "_No release notes in the changelog._"
 	}
 
+	run := "workflow run"
+	if c.RunURL != "" {
+		run = fmt.Sprintf("[workflow run](%s)", c.RunURL)
+	}
+
 	var comment strings.Builder
-	fmt.Fprintf(&comment, "### Merging this PR will release %s\n\n", version)
-	if len(problems) > 0 {
+	fmt.Fprintf(&comment, "### Merging this PR will release %s\n\n", c.Version)
+	switch c.Status {
+	case releaseCommentPending:
+		fmt.Fprintf(&comment, "> [!WARNING]\n> ⏳ The release is being drafted, wait for the %s to complete before merging.\n\n", run)
+	case releaseCommentFailed:
+		fmt.Fprintf(&comment, "> [!CAUTION]\n> ❌ Drafting the release failed, see the %s. Do not merge before it succeeds.\n\n", run)
+	}
+	if len(c.Problems) > 0 {
 		comment.WriteString("#### ⚠️ Preparation\n\n")
-		for _, problem := range problems {
+		for _, problem := range c.Problems {
 			fmt.Fprintf(&comment, "- %s\n", problem)
 		}
 		comment.WriteString("\n")
 	}
-	for _, step := range steps {
+	for _, step := range c.Steps {
 		fmt.Fprintf(&comment, "- %s\n", step)
 	}
-	if len(steps) > 0 {
+	if len(c.Steps) > 0 {
 		comment.WriteString("\n")
 	}
 	fmt.Fprintf(&comment, "<details><summary>Release notes</summary>\n\n%s\n\n</details>", notes)
 
 	return comment.String()
+}
+
+// gitHubRunURL is the URL of the current GitHub Actions run, empty outside of GitHub Actions.
+func gitHubRunURL() string {
+	server, repository, runID := os.Getenv("GITHUB_SERVER_URL"), os.Getenv("GITHUB_REPOSITORY"), os.Getenv("GITHUB_RUN_ID")
+	if server == "" || repository == "" || runID == "" {
+		return ""
+	}
+
+	return server + "/" + repository + "/actions/runs/" + runID
 }
 
 // gitHubEventBaseRevision is the revision a GitHub Actions event compares with, empty for an

@@ -28,8 +28,9 @@ var ReleasePrepareCmd = Command(releasePrepare,
 
 		On a GitHub Actions pull request, it comments the release notes on the pull request
 		before building, then updates that comment with what publishing does: the crates, the
-		Homebrew pull request and the draft release, with their links. A failed comment is only
-		a warning.
+		Homebrew pull request and the draft release, with their links. The comment tells to wait
+		for the workflow run until the draft is complete, the checks of the Homebrew pull request
+		included, and not to merge when it fails. A failed comment is only a warning.
 
 		For crates, it first checks that the release commit is prepared: each crate's Cargo.toml
 		has the release version and a committed Cargo.lock is up to date. Problems are listed
@@ -42,7 +43,7 @@ var ReleasePrepareCmd = Command(releasePrepare,
 	OnCommandError(onReleaseError),
 )
 
-func releasePrepare(cmd *cobra.Command, args []string) error {
+func releasePrepare(cmd *cobra.Command, args []string) (err error) {
 	if len(args) != 1 {
 		return fmt.Errorf("the <version> argument is required")
 	}
@@ -55,21 +56,26 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 	global := mustGetGlobal(cmd)
 	model := &ReleaseModel{Version: args[0]}
 	model.populate(cmd, global)
+
+	comment := &pullRequestComment{global: global, pullRequest: pullRequest, comment: releaseComment{Version: args[0], RunURL: gitHubRunURL()}}
+	defer func() {
+		if err != nil {
+			comment.post(releaseCommentFailed)
+		}
+	}()
+
 	if releaseTagsOnly(global) {
-		return prepareTagRelease(cmd, global, args[0], pullRequest)
+		return prepareTagRelease(cmd, global, args[0], comment)
 	}
 
-	var notes string
 	if pullRequest != 0 {
-		notes = readReleaseNotes(global.ResolveFile(sflags.MustGetString(cmd, "changelog-path")))
-		commentPullRequest(global, pullRequest, releaseComment(args[0], notes, nil, nil), true)
+		comment.comment.Notes = readReleaseNotes(global.ResolveFile(sflags.MustGetString(cmd, "changelog-path")))
+		comment.post(releaseCommentPending)
 	}
 
 	if model.Rust != nil && len(model.Rust.Crates) > 0 {
 		if problems := prepareRustProblems(global, model.Rust, args[0]); len(problems) > 0 {
-			if pullRequest != 0 {
-				commentPullRequest(global, pullRequest, releaseComment(args[0], notes, nil, problems), false)
-			}
+			comment.comment.Problems = problems
 			return fmt.Errorf("the release is not prepared:\n- %s", strings.Join(problems, "\n- "))
 		}
 	}
@@ -78,14 +84,15 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	comment.global = global
+	comment.comment.Version = release.Version
 
 	draftURL := releaseURL(global, release.Version)
 	fmt.Printf("Draft release %s created at %s\n", release.Version, draftURL)
 
 	if !brewFormulaApplies(global, release) {
-		if pullRequest != 0 {
-			commentPullRequest(global, pullRequest, releaseComment(release.Version, notes, prepareSteps(release, "", draftURL), nil), false)
-		}
+		comment.comment.Steps = prepareSteps(release, "", draftURL)
+		comment.post(releaseCommentReady)
 		return nil
 	}
 
@@ -108,15 +115,18 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if pullRequest != 0 {
-		commentPullRequest(global, pullRequest, releaseComment(release.Version, notes, prepareSteps(release, update.PullRequest, draftURL), nil), false)
+	comment.comment.Steps = prepareSteps(release, update.PullRequest, draftURL)
+	if !update.Unchanged {
+		// The links are known, the notice stays until the checks of the Homebrew pull request pass
+		comment.post(releaseCommentPending)
+
+		if err := waitForBrewPullRequestChecks(update, sflags.MustGetDuration(cmd, "checks-timeout")); err != nil {
+			return err
+		}
 	}
 
-	if update.Unchanged {
-		return nil
-	}
-
-	return waitForBrewPullRequestChecks(update, sflags.MustGetDuration(cmd, "checks-timeout"))
+	comment.post(releaseCommentReady)
+	return nil
 }
 
 // prepareRustProblems checks the crates before anything is built, so that the pull request
@@ -130,7 +140,7 @@ func prepareRustProblems(global *GlobalModel, rust *RustReleaseModel, version st
 
 // prepareTagRelease checks the tag of a release that is only its tag and comments on the pull
 // request, nothing is built nor drafted.
-func prepareTagRelease(cmd *cobra.Command, global *GlobalModel, version string, pullRequest int) error {
+func prepareTagRelease(cmd *cobra.Command, global *GlobalModel, version string, comment *pullRequestComment) error {
 	if err := validVersion(version); err != nil {
 		return fmt.Errorf("invalid version: %w", err)
 	}
@@ -142,15 +152,17 @@ func prepareTagRelease(cmd *cobra.Command, global *GlobalModel, version string, 
 	useGitHubTokenForGh()
 
 	changelogPath := global.ResolveFile(sflags.MustGetString(cmd, "changelog-path"))
+	if comment.pullRequest != 0 {
+		comment.comment.Notes = readReleaseNotes(changelogPath)
+		comment.comment.Steps = []string{fmt.Sprintf("Creates the tag `%s` on the merge commit", version)}
+		comment.post(releaseCommentPending)
+	}
+
 	if err := prepareTag(global, version, changelogPath); err != nil {
 		return err
 	}
 
-	if pullRequest != 0 {
-		steps := []string{fmt.Sprintf("Creates the tag `%s` on the merge commit", version)}
-		commentPullRequest(global, pullRequest, releaseComment(version, readReleaseNotes(changelogPath), steps, nil), true)
-	}
-
+	comment.post(releaseCommentReady)
 	return nil
 }
 
@@ -182,10 +194,28 @@ func prepareSteps(release *ReleaseModel, brewPullRequest, draftURL string) []str
 	return append(steps, fmt.Sprintf("Publishes the [draft release](%s)", draftURL))
 }
 
+// pullRequestComment is sfreleaser's comment on the release pull request, nothing is commented
+// when pullRequest is 0.
+type pullRequestComment struct {
+	global      *GlobalModel
+	pullRequest int
+	comment     releaseComment
+}
+
+// post writes the comment with status, editing the previous one if any.
+func (c *pullRequestComment) post(status releaseCommentStatus) {
+	if c.pullRequest == 0 {
+		return
+	}
+
+	c.comment.Status = status
+	commentPullRequest(c.global, c.pullRequest, c.comment.Markdown())
+}
+
 // commentPullRequest writes body as sfreleaser's comment on the pull request, editing its last
-// comment there, created when there is none and create is set. A failure is only a warning, the
-// comment is not part of the release.
-func commentPullRequest(global *GlobalModel, pullRequest int, body string, create bool) {
+// comment there, created when there is none. A failure is only a warning, the comment is not
+// part of the release.
+func commentPullRequest(global *GlobalModel, pullRequest int, body string) {
 	file, err := os.CreateTemp("", "sfreleaser-comment-*.md")
 	if err != nil {
 		fmt.Printf("Unable to comment on pull request #%d: %s\n", pullRequest, err)
@@ -204,10 +234,7 @@ func commentPullRequest(global *GlobalModel, pullRequest int, body string, creat
 
 	useGitHubTokenForGh()
 
-	args := []string{"gh", "pr", "comment", strconv.Itoa(pullRequest), "--repo", global.Owner + "/" + global.Project, "--edit-last", "--body-file", "'" + file.Name() + "'"}
-	if create {
-		args = append(args, "--create-if-none")
-	}
+	args := []string{"gh", "pr", "comment", strconv.Itoa(pullRequest), "--repo", global.Owner + "/" + global.Project, "--edit-last", "--create-if-none", "--body-file", "'" + file.Name() + "'"}
 
 	if _, _, err := maybeResultOf(args...); err != nil {
 		fmt.Printf("Unable to comment on pull request #%d: %s\n", pullRequest, err)
