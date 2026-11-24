@@ -1,13 +1,12 @@
 module github.com/streamingfast/sfreleaser
 
-go 1.24
-
-toolchain go1.24.2
+go 1.26.0
 
 require (
 	github.com/bobg/go-generics/v2 v2.1.1
 	github.com/creack/pty v1.1.18
 	github.com/hashicorp/go-version v1.6.0
+	github.com/jedisct1/go-minisign v0.0.0-20260527172527-a09352b57a22
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/pelletier/go-toml/v2 v2.0.7
 	github.com/spf13/cobra v1.1.3
@@ -18,7 +17,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/ulikunitz/xz v0.5.17
 	go.uber.org/zap v1.21.0
-	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
+	golang.org/x/term v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -54,9 +53,9 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb // indirect
-	golang.org/x/sys v0.25.0 // indirect
-	golang.org/x/text v0.18.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )

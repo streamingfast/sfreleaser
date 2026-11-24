@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## v0.19.0
+
+- The native builder downloads zig from the [Zig community mirrors](https://ziglang.org/download/community-mirrors.txt) first, in random order, with a `?source=sfreleaser` query parameter, and from ziglang.org only as last resort. The mirror list falls back to an embedded copy when it cannot be fetched. Every download is verified with the zig minisign public key besides the pinned checksum, a mirror serving a bad signature is skipped. The single 10 minutes deadline is replaced by a 15 seconds connect timeout and a 60 seconds stall timeout per attempt, each attempt being logged, so a ziglang.org outage no longer fails the build. At most 5 mirrors are tried before ziglang.org and the whole download gives up after 3 minutes.
+
+- Build sfreleaser with Go 1.26 (was 1.24), required by the `go-minisign` dependency.
 
 - Add native `.deb` packaging with [nfpm](https://nfpm.goreleaser.com): `deb: true` under `release` in `.sfreleaser` (or `--deb`) builds one `<binary>_<version>_<arch>.deb` per Linux binary of the native builder, attaches them to the release and lists them in `checksums.txt`. The nfpm configuration is generated: the binary is installed at `/usr/bin/<binary>`, every file under `packaging/deb/rootfs/` at the same path in the package, and `preinstall.sh`, `postinstall.sh`, `preremove.sh` and `postremove.sh` of `packaging/deb/` are the maintainer scripts (`deb-dir` changes the directory). The package description defaults to the first paragraph of the README, the license to the one detected in the LICENSE file and the homepage to the GitHub repository URL, only a description or license still unknown is read from the GitHub repository, and the maintainer defaults to the git identity, `deb-description`, `deb-license`, `deb-homepage` and `deb-maintainer` override them, `deb-depends` and `deb-recommends` list dependencies. `deb-config` uses a handwritten nfpm configuration instead, rendered with the `PKG_VERSION` (without its `v`), `PKG_ARCH` and `PKG_BINARY` environment variables. `nfpm` is used from `PATH`, otherwise a pinned version is run through `go run`. `deb-smoke-test: true` also installs every package in a clean Debian container (requires Docker) before releasing. Requires a Go application built with the native builder, without `no-binaries`.
 

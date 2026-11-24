@@ -3,18 +3,14 @@ package main
 import (
 	"archive/tar"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/ulikunitz/xz"
 	"go.uber.org/zap"
@@ -33,6 +29,7 @@ var zigChecksums = map[string]string{
 	"x86_64-macos":  "4f9a1c5269aa17ebda5e6d3c2b89d6cbf36f7d2b22a0306e9ab98f25f95529c6",
 }
 
+// zigDownloadBaseURL is ziglang.org, the last source tried.
 var zigDownloadBaseURL = "https://ziglang.org/download"
 
 // zigHost is the name zig gives to the host sfreleaser runs on, as used in its tarball names.
@@ -151,12 +148,8 @@ func installZig(ctx context.Context, host string, destination string) error {
 	defer os.Remove(archive.Name())
 	defer archive.Close()
 
-	url := fmt.Sprintf("%s/%s/zig-%s-%s.tar.xz", zigDownloadBaseURL, zigVersion, host, zigVersion)
-	if err := download(ctx, url, archive, checksum); err != nil {
-		return err
-	}
-
-	if _, err := archive.Seek(0, io.SeekStart); err != nil {
+	name := fmt.Sprintf("zig-%s-%s.tar.xz", host, zigVersion)
+	if err := downloadZigTarball(ctx, name, archive, checksum); err != nil {
 		return err
 	}
 
@@ -167,7 +160,7 @@ func installZig(ctx context.Context, host string, destination string) error {
 	defer os.RemoveAll(staging)
 
 	if err := extractTarXz(ctx, archive, staging); err != nil {
-		return fmt.Errorf("extracting %s: %w", url, err)
+		return fmt.Errorf("extracting %s: %w", name, err)
 	}
 
 	// MkdirTemp creates it private to the user.
@@ -181,37 +174,6 @@ func installZig(ctx context.Context, host string, destination string) error {
 			return nil
 		}
 		return err
-	}
-
-	return nil
-}
-
-func download(ctx context.Context, url string, to io.Writer, expectedSHA256 string) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
-	defer cancel()
-
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-
-	response, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return fmt.Errorf("downloading %s: %w", url, err)
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("downloading %s: %s", url, response.Status)
-	}
-
-	hash := sha256.New()
-	if _, err := io.Copy(io.MultiWriter(to, hash), response.Body); err != nil {
-		return fmt.Errorf("downloading %s: %w", url, err)
-	}
-
-	if actual := hex.EncodeToString(hash.Sum(nil)); actual != expectedSHA256 {
-		return fmt.Errorf("checksum mismatch for %s: expected %s, got %s", url, expectedSHA256, actual)
 	}
 
 	return nil
