@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.19.1
+
+- `release --publish-now` and `release publish` refuse to continue when more than one GitHub release exists for the version, as when a local release ran while the CI release workflow was drafting the same version, listing the releases to delete instead of failing to publish.
+
+- A failing silent command, like publishing the release with `gh release edit`, now prints the command and its output instead of exiting without any message.
+
 ## v0.19.0
 
 - The native builder downloads zig from the [Zig community mirrors](https://ziglang.org/download/community-mirrors.txt) first, in random order, with a `?source=sfreleaser` query parameter, and from ziglang.org only as last resort. The mirror list falls back to an embedded copy when it cannot be fetched. Every download is verified with the zig minisign public key besides the pinned checksum, a mirror serving a bad signature is skipped. The single 10 minutes deadline is replaced by a 15 seconds connect timeout and a 60 seconds stall timeout per attempt, each attempt being logged, so a ziglang.org outage no longer fails the build. At most 5 mirrors are tried before ziglang.org and the whole download gives up after 3 minutes.

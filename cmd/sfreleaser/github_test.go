@@ -116,3 +116,10 @@ func Test_configureGitHubTokenEnvFile(t *testing.T) {
 		assert.Equal(t, "GITHUB_TOKEN=ghs_release\nHOMEBREW_TAP_TOKEN=github_pat_tap", cli.ReadFile(path))
 	})
 }
+
+func Test_parseReleaseURLs(t *testing.T) {
+	assert.Nil(t, parseReleaseURLs(""))
+	assert.Nil(t, parseReleaseURLs("\n  \n"))
+	assert.Equal(t, []string{"https://a"}, parseReleaseURLs("https://a\n"))
+	assert.Equal(t, []string{"https://a", "https://b"}, parseReleaseURLs("https://a\n\nhttps://b"))
+}

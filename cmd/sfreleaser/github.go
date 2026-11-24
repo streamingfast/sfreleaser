@@ -107,6 +107,8 @@ func releaseURL(global *GlobalModel, version string) string {
 }
 
 func ensureGitHubReleaseValid(global *GlobalModel, version string) {
+	ensureSingleGitHubRelease(global, version)
+
 	state, url := releaseState(global, version)
 
 	switch state {
@@ -165,11 +167,55 @@ func releaseState(global *GlobalModel, version string) (state ghReleaseState, ur
 	return ghReleaseExists, url
 }
 
+// ensureSingleGitHubRelease quits when more than one GitHub release, draft or not, exists for the
+// version. 'gh' resolves a version to only one of them, so deleting or publishing "the" release
+// would act on an arbitrary one, or fail when GitHub refuses to publish a second release for the
+// tag.
+func ensureSingleGitHubRelease(global *GlobalModel, version string) {
+	urls := gitHubReleaseURLs(global, version)
+	if len(urls) <= 1 {
+		return
+	}
+
+	cli.Quit("%s", dedent(`
+		Found %d GitHub releases for %q, refusing to continue as 'gh' cannot tell them apart:
+
+		%s
+
+		This happens when two releases of the same version ran concurrently, for example a local
+		'sfreleaser release' while the CI release workflow was drafting it. Delete the extra
+		draft release(s) from the GitHub UI, keeping the one you want, and try again.
+	`, len(urls), version, "- "+strings.Join(urls, "\n- ")))
+}
+
+// gitHubReleaseURLs lists the URL of every GitHub release, drafts included, of the version.
+func gitHubReleaseURLs(global *GlobalModel, version string) []string {
+	output := resultOf("gh api --paginate", "repos/"+global.Owner+"/"+global.Project+"/releases",
+		"--jq", "'.[] | select(.tag_name == \""+version+"\") | .html_url'",
+	)
+
+	return parseReleaseURLs(output)
+}
+
+func parseReleaseURLs(output string) (urls []string) {
+	for line := range strings.Lines(output) {
+		if line = strings.TrimSpace(line); line != "" {
+			urls = append(urls, line)
+		}
+	}
+
+	return urls
+}
+
 func deleteExistingRelease(global *GlobalModel, version string) {
 	run("gh release delete --yes", "--repo", global.Owner+"/"+global.Project, version)
 }
 
 func publishReleaseNow(global *GlobalModel, release *ReleaseModel) {
+	// Before publishing anything, crates or package included, since the GitHub release could then
+	// not be published.
+	ensureSingleGitHubRelease(global, release.Version)
+
 	if global.Language == LanguageRust {
 		switch global.Variant {
 		case VariantSubstreams:

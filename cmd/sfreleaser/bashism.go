@@ -87,13 +87,13 @@ func run(inputs ...string) (output string) {
 	return output
 }
 
-// runSilent is like [run] but do not print the command output but do print
-// the failure
+// runSilent is like [run] but do not print the command output, unless it fails in which case
+// the failure and the captured output are printed before exiting.
 func runSilent(inputs ...string) (output string, err error) {
 	output, info, err := internalMaybeRun(inputs, true)
 	if err != nil {
 		zlog.Debug("run command failed", zap.Stringer("cmd", info), zap.Error(err), zap.String("output", output))
-		cli.Exit(1)
+		cli.NoError(err, "Command %q failed with output:\n%s", info, strings.TrimSpace(output))
 	}
 
 	return output, nil
