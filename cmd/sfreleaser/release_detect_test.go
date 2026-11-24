@@ -51,12 +51,48 @@ func Test_detectRelease(t *testing.T) {
 }
 
 func Test_detectOutputs(t *testing.T) {
-	assert.Equal(t, [][2]string{{"version", ""}, {"is_release_pr", ""}, {"preview_comment", ""}}, detectOutputs("", ""))
-	assert.Equal(t, [][2]string{{"version", "v1.2.0"}, {"is_release_pr", "true"}, {"preview_comment", "### Merging this PR will release v1.2.0\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>"}}, detectOutputs("v1.2.0", "- Feature"))
-	assert.Equal(t, "### Merging this PR will release v1.2.0\n\n<details><summary>Release notes</summary>\n\n_No release notes in the changelog._\n\n</details>", detectOutputs("v1.2.0", "")[2][1])
+	assert.Equal(t, [][2]string{{"version", ""}, {"is_release_pr", ""}, {"preview_comment", ""}}, detectOutputs("", "", ""))
+	assert.Equal(t, [][2]string{{"version", "v1.2.0"}, {"is_release_pr", "true"}, {"preview_comment", "### Merging this PR will release v1.2.0\n\n> [!WARNING]\n> ⏳ The release is being drafted, wait for the [workflow run](https://r) to complete before merging.\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>"}}, detectOutputs("v1.2.0", "- Feature", "https://r"))
+}
 
-	assert.Equal(t, "### Merging this PR will release v1.2.0\n\n- Publishes the crates `a`, `b`\n- Publishes the [draft release](https://d)\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>", releaseComment("v1.2.0", "- Feature", []string{"Publishes the crates `a`, `b`", "Publishes the [draft release](https://d)"}, nil))
-	assert.Equal(t, "### Merging this PR will release v1.2.0\n\n#### ⚠️ Preparation\n\n- Stale lock\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>", releaseComment("v1.2.0", "- Feature", nil, []string{"Stale lock"}))
+func Test_releaseComment(t *testing.T) {
+	tests := []struct {
+		name    string
+		comment releaseComment
+		want    string
+	}{
+		{
+			"pending without run",
+			releaseComment{Version: "v1.2.0", Status: releaseCommentPending},
+			"### Merging this PR will release v1.2.0\n\n> [!WARNING]\n> ⏳ The release is being drafted, wait for the workflow run to complete before merging.\n\n<details><summary>Release notes</summary>\n\n_No release notes in the changelog._\n\n</details>",
+		},
+		{
+			"ready with steps",
+			releaseComment{Version: "v1.2.0", Notes: "- Feature", Status: releaseCommentReady, RunURL: "https://r", Steps: []string{"Publishes the crates `a`, `b`", "Publishes the [draft release](https://d)"}},
+			"### Merging this PR will release v1.2.0\n\n- Publishes the crates `a`, `b`\n- Publishes the [draft release](https://d)\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>",
+		},
+		{
+			"failed with problems",
+			releaseComment{Version: "v1.2.0", Notes: "- Feature", Status: releaseCommentFailed, RunURL: "https://r", Problems: []string{"Stale lock"}},
+			"### Merging this PR will release v1.2.0\n\n> [!CAUTION]\n> ❌ Drafting the release failed, see the [workflow run](https://r). Do not merge before it succeeds.\n\n#### ⚠️ Preparation\n\n- Stale lock\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.comment.Markdown())
+		})
+	}
+}
+
+func Test_gitHubRunURL(t *testing.T) {
+	t.Setenv("GITHUB_SERVER_URL", "https://github.com")
+	t.Setenv("GITHUB_REPOSITORY", "streamingfast/sfreleaser")
+	t.Setenv("GITHUB_RUN_ID", "42")
+	assert.Equal(t, "https://github.com/streamingfast/sfreleaser/actions/runs/42", gitHubRunURL())
+
+	t.Setenv("GITHUB_RUN_ID", "")
+	assert.Equal(t, "", gitHubRunURL())
 }
 
 func Test_gitHubEventBaseRevision(t *testing.T) {
