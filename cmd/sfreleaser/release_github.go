@@ -347,6 +347,7 @@ func releaseGithubNative(global *GlobalModel, release *ReleaseModel, githubRelea
 	}
 
 	releaseGithubDraft(global, release, githubRelease, assets...)
+	release.Brew.Archives = archives
 
 	if !release.Brew.Disabled && !release.Brew.Deferred {
 		_, err := publishBrewFormula(global, release, archives)
