@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.19.3
+
+- `release prepare` with the native builder renders the Homebrew formula from the archives it just built instead of downloading them back from the draft release.
+
 ## v0.19.2
 
 - Fix `.deb` packaging failing with `requires go >= 1.27.4 (running go 1.24.13; GOTOOLCHAIN=local)` when the project released uses an older Go than nfpm: nfpm is now embedded in sfreleaser instead of being run from `PATH` or through `go run`, so it no longer depends on the Go version of the project nor on an `nfpm` install.

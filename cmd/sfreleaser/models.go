@@ -442,7 +442,10 @@ type GitHubReleaseModel struct {
 type BrewReleaseModel struct {
 	Disabled bool
 	// Deferred leaves the formula to 'release prepare', which updates it once the draft exists.
-	Deferred     bool
+	Deferred bool
+	// Archives are the archives the native builder packaged and attached to the draft, the
+	// deferred formula is rendered from them instead of downloading them back from the release.
+	Archives     []nativeArchive
 	PullRequest  bool
 	TapRepoOwner string
 	TapRepoName  string

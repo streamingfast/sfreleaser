@@ -91,12 +91,19 @@ func releasePrepare(cmd *cobra.Command, args []string) error {
 
 	useGitHubTokenForGh()
 
-	state, err := publishedReleaseState(global.Owner+"/"+global.Project, release.Version)
-	if err != nil {
-		return err
-	}
+	var update *brewFormulaUpdate
+	if len(release.Brew.Archives) > 0 {
+		// The native builder just attached these archives to the draft, no need to download them back.
+		release.Brew.PullRequest = true
+		update, err = publishBrewFormula(global, release, release.Brew.Archives)
+	} else {
+		var state *releaseStateInfo
+		if state, err = publishedReleaseState(global.Owner+"/"+global.Project, release.Version); err != nil {
+			return err
+		}
 
-	update, err := openBrewPullRequest(global, release, state)
+		update, err = openBrewPullRequest(global, release, state)
+	}
 	if err != nil {
 		return err
 	}
