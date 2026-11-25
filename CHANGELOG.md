@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- The `.deb` smoke test (`deb-smoke-test: true`) skips, with a warning, a package whose architecture the Docker host cannot run, like arm64 on an amd64 GitHub Actions runner, instead of failing with `exec format error`. The package is still built and released, only its install is not tested.
+
 ## v0.19.4
 
 - The pull request comment of `release prepare` tells to wait for the workflow run, linked, before merging until the release is fully drafted, checks of the Homebrew pull request included, and tells not to merge when drafting fails. The `preview_comment` output of `release detect` carries the same wait notice.
