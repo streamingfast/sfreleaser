@@ -8,6 +8,8 @@ import (
 
 func Test_releaseTagsOnly(t *testing.T) {
 	assert.True(t, releaseTagsOnly(&GlobalModel{Variant: VariantChain}), "chain")
+	assert.True(t, releaseTagsOnly(&GlobalModel{Variant: VariantChain, Kind: KindLibrary}), "chain library")
+	assert.False(t, releaseTagsOnly(&GlobalModel{Variant: VariantChain, Kind: KindApplication}), "chain application")
 	assert.False(t, releaseTagsOnly(&GlobalModel{Variant: VariantLibrary}), "library")
 	assert.False(t, releaseTagsOnly(&GlobalModel{Variant: VariantApplication}), "application")
 	assert.False(t, releaseTagsOnly(&GlobalModel{Variant: VariantSubstreams}), "Substreams package")

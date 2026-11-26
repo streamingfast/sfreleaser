@@ -21,8 +21,13 @@ type GlobalModel struct {
 	Project  string
 	Binary   string
 	Language Language
-	License  string
-	Variant  Variant
+
+	// Kind is resolved from the configured kind and variant by [resolveKindVariant], unset
+	// when neither is set.
+	Kind    Kind
+	License string
+	Variant Variant
+
 	// The root of the project as provided by the user, never modified,
 	// most usage should use `WorkingDirectory` instead which is computed
 	// from this value when set.
@@ -61,6 +66,7 @@ func (g *GlobalModel) MarshalLogObject(encoder zapcore.ObjectEncoder) error {
 	encoder.AddString("language", g.Language.String())
 	encoder.AddString("license", g.License)
 	encoder.AddString("variant", g.Variant.String())
+	encoder.AddString("kind", g.Kind.String())
 	encoder.AddString("config_root", g.ConfigRoot)
 	encoder.AddString("working_directory", g.WorkingDirectory)
 	encoder.AddString("git_remote", g.GitRemote)
@@ -125,11 +131,12 @@ func mustGetGlobal(cmd *cobra.Command) *GlobalModel {
 		Binary:    sflags.MustGetString(cmd, "binary"),
 		Language:  mustGetLanguage(cmd),
 		License:   sflags.MustGetString(cmd, "license"),
-		Variant:   mustGetVariant(cmd),
 		Root:      sflags.MustGetString(cmd, "root"),
 		GitRemote: sflags.MustGetString(cmd, "git-remote"),
 		Yes:       sflags.MustGetBool(cmd, "yes"),
 	}
+
+	global.Kind, global.Variant = mustGetKindVariant(cmd)
 
 	nonInteractive, nonInteractiveProvided := sflags.MustGetBoolProvided(cmd, "non-interactive")
 	global.NonInteractive = nonInteractive || (!nonInteractiveProvided && isCI())

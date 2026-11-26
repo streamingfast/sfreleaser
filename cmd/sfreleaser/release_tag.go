@@ -11,9 +11,10 @@ import (
 )
 
 // releaseTagsOnly reports whether the release of this project is only its tag, the own workflows
-// of the repository making the release from it.
+// of the repository making the release from it. It is the case of a 'chain' variant, unless its
+// kind is [KindApplication] which gets a full GitHub release, without artifacts built by sfreleaser.
 func releaseTagsOnly(global *GlobalModel) bool {
-	return global.Variant == VariantChain
+	return global.Variant == VariantChain && global.Kind != KindApplication
 }
 
 // releaseTag is 'sfreleaser release' of a release that is only its tag: the tag is checked, then
