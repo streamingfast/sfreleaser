@@ -3,4 +3,7 @@ global:
   binary: {{ .global.Binary }}
   {{- end }}
   language: {{ .global.Language | lower }}
+  kind: {{ .global.Kind }}
+  {{- if .global.NeedsVariant }}
   variant: {{ .global.Variant | lower }}
+  {{- end }}

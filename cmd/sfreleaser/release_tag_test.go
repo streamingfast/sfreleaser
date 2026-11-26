@@ -34,12 +34,3 @@ func Test_tagLookupNotFound(t *testing.T) {
 	assert.False(t, tagLookupNotFound(`{"message":"Bad credentials","status":"401"}`), "authentication error")
 	assert.False(t, tagLookupNotFound("gh: Bad credentials (HTTP 401)"), "authentication error from gh")
 }
-
-func Test_validateKind(t *testing.T) {
-	assert.NoError(t, (&GlobalModel{Variant: VariantChain}).validateKind(), "chain, unset")
-	assert.NoError(t, (&GlobalModel{Variant: VariantChain, Kind: KindApplication}).validateKind(), "chain application")
-	assert.NoError(t, (&GlobalModel{Variant: VariantChain, Kind: KindLibrary}).validateKind(), "chain library")
-	assert.NoError(t, (&GlobalModel{Variant: VariantApplication}).validateKind(), "application, unset")
-	assert.Error(t, (&GlobalModel{Variant: VariantChain, Kind: "other"}).validateKind(), "chain, invalid")
-	assert.Error(t, (&GlobalModel{Variant: VariantApplication, Kind: KindApplication}).validateKind(), "not a chain")
-}

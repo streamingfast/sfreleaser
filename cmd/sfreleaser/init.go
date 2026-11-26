@@ -51,6 +51,7 @@ func initCmd(cmd *cobra.Command, _ []string) error {
 
 	if global.Variant == VariantUnset {
 		global.Variant = promptVariant()
+		global.Kind = kindOf(global.Variant)
 	}
 
 	var noBinaries bool

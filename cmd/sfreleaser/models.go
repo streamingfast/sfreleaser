@@ -24,8 +24,8 @@ type GlobalModel struct {
 	License  string
 	Variant  Variant
 
-	// Kind is the shape of a [VariantChain] project, one of [KindApplication] or [KindLibrary],
-	// empty when not set. See [releaseTagsOnly].
+	// Kind is the kind of the project, one of [KindApplication] or [KindLibrary], resolved
+	// from the configured kind and variant by [resolveKindVariant], empty when neither is set.
 	Kind string
 
 	// The root of the project as provided by the user, never modified,
@@ -131,12 +131,12 @@ func mustGetGlobal(cmd *cobra.Command) *GlobalModel {
 		Binary:    sflags.MustGetString(cmd, "binary"),
 		Language:  mustGetLanguage(cmd),
 		License:   sflags.MustGetString(cmd, "license"),
-		Variant:   mustGetVariant(cmd),
-		Kind:      strings.ToLower(sflags.MustGetString(cmd, "kind")),
 		Root:      sflags.MustGetString(cmd, "root"),
 		GitRemote: sflags.MustGetString(cmd, "git-remote"),
 		Yes:       sflags.MustGetBool(cmd, "yes"),
 	}
+
+	global.Kind, global.Variant = mustGetKindVariant(cmd)
 
 	nonInteractive, nonInteractiveProvided := sflags.MustGetBoolProvided(cmd, "non-interactive")
 	global.NonInteractive = nonInteractive || (!nonInteractiveProvided && isCI())
@@ -183,10 +183,6 @@ func (g *GlobalModel) ensureValidForRelease() {
 
 	if g.Variant == VariantUnset {
 		errors = append(errors, `You must specify for which variant you are building for via flag ("--variant"), config file ("global.variant" in ".sfreleaser" file) or environment variable ("SFRELEASER_GLOBAL_VARIANT")`)
-	}
-
-	if err := g.validateKind(); err != nil {
-		errors = append(errors, err.Error())
 	}
 
 	if len(errors) != 0 {

@@ -23,11 +23,11 @@ A `variant: chain` project is released by its own workflows, so by default (or w
 
 ```yaml
 global:
-  variant: chain
   kind: application
+  variant: chain
 ```
 
-`kind` is only valid with the `chain` variant, a configuration without it is unchanged.
+`kind` (`application` or `library`) is the main project key; `variant: application` and `variant: library` are deprecated spellings of it. `variant` is only needed for `substreams` (a library) and `chain`. A `substreams` or `chain` variant without `kind` is a library, so existing configurations are unchanged.
 
 ### Running in CI
 

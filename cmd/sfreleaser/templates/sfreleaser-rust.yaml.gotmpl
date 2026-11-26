@@ -1,6 +1,9 @@
 global:
   language: {{ .global.Language | lower }}
+  kind: {{ .global.Kind }}
+  {{- if .global.NeedsVariant }}
   variant: {{ .global.Variant | lower }}
+  {{- end }}
 {{- if or .rust.Crates .noBinaries }}
 release:
   {{- if .noBinaries }}
