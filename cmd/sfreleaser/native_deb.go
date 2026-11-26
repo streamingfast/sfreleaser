@@ -158,11 +158,32 @@ func buildDebPackages(ctx context.Context, options debOptions) ([]debPackage, er
 	return packages, nil
 }
 
+// dockerRunner runs a docker command and returns its combined output.
+type dockerRunner func(ctx context.Context, args ...string) (string, error)
+
+func runDocker(ctx context.Context, args ...string) (string, error) {
+	output, err := exec.CommandContext(ctx, "docker", args...).CombinedOutput()
+	return string(output), err
+}
+
+// canRunDebSmokeTestPlatform reports whether a container of the architecture can run on the Docker
+// host. It cannot for an arm64 package on an amd64 Linux runner without QEMU, where Docker fails
+// with 'exec format error'. Any other probe failure counts as runnable, the real run reports it.
+func canRunDebSmokeTestPlatform(ctx context.Context, docker dockerRunner, arch string) bool {
+	output, err := docker(ctx, "run", "--rm", "--platform", "linux/"+arch, debSmokeTestImage, "true")
+	return err == nil || !strings.Contains(output, "exec format error")
+}
+
 // smokeTestDeb installs the package in a clean Debian container of its architecture.
 func smokeTestDeb(ctx context.Context, pkg debPackage) error {
 	directory, err := filepath.Abs(filepath.Dir(pkg.Path))
 	if err != nil {
 		return err
+	}
+
+	if !canRunDebSmokeTestPlatform(ctx, runDocker, debArch(pkg.Target)) {
+		fmt.Printf("⚠️ Skipping smoke test of %s, Docker on this host cannot run linux/%s containers (no emulation)\n", pkg.Name, debArch(pkg.Target))
+		return nil
 	}
 
 	cmd := exec.CommandContext(ctx, "docker", "run", "--rm",

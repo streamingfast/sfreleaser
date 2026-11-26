@@ -3,6 +3,7 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -306,4 +307,14 @@ func Test_readmeDescription(t *testing.T) {
 			assert.Equal(t, tt.want, readmeDescription(path))
 		})
 	}
+}
+
+func TestCanRunDebSmokeTestPlatform(t *testing.T) {
+	docker := func(output string, err error) dockerRunner {
+		return func(context.Context, ...string) (string, error) { return output, err }
+	}
+
+	assert.True(t, canRunDebSmokeTestPlatform(context.Background(), docker("", nil), "arm64"))
+	assert.False(t, canRunDebSmokeTestPlatform(context.Background(), docker("exec /usr/bin/true: exec format error", assert.AnError), "arm64"))
+	assert.True(t, canRunDebSmokeTestPlatform(context.Background(), docker("docker: command not found", assert.AnError), "arm64"))
 }
