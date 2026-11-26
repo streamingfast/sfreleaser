@@ -10,10 +10,34 @@ import (
 	"github.com/streamingfast/cli/sflags"
 )
 
+const (
+	// KindApplication is the 'chain' kind with a full GitHub release, a draft at 'release prepare'
+	// that 'release publish' publishes, the binaries being uploaded by the repository's own workflows.
+	KindApplication = "application"
+
+	// KindLibrary is the 'chain' kind that is only its tag.
+	KindLibrary = "library"
+)
+
+// validateKind checks the 'kind' of the project, which only applies to a 'chain' variant.
+func (g *GlobalModel) validateKind() error {
+	switch {
+	case g.Kind == "":
+		return nil
+	case g.Variant != VariantChain:
+		return fmt.Errorf(`The "kind" (%q) only applies to the "chain" variant`, g.Kind)
+	case g.Kind != KindApplication && g.Kind != KindLibrary:
+		return fmt.Errorf(`The "kind" %q is invalid, use %q or %q`, g.Kind, KindApplication, KindLibrary)
+	}
+
+	return nil
+}
+
 // releaseTagsOnly reports whether the release of this project is only its tag, the own workflows
-// of the repository making the release from it.
+// of the repository making the release from it. It is the case of a 'chain' variant, unless its
+// kind is [KindApplication] which gets a full GitHub release, without artifacts built by sfreleaser.
 func releaseTagsOnly(global *GlobalModel) bool {
-	return global.Variant == VariantChain
+	return global.Variant == VariantChain && global.Kind != KindApplication
 }
 
 // releaseTag is 'sfreleaser release' of a release that is only its tag: the tag is checked, then

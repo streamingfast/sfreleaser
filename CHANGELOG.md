@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add `kind` (`global.kind`, `--kind`) to the `chain` variant: with `kind: application`, `release prepare` creates a draft GitHub release from the changelog (marked as pre-release for a pre-release version, no artifact built) and `release publish` publishes it, instead of only creating the tag. A `chain` project without `kind`, or with `kind: library`, is still tag only.
+
 - The `.deb` smoke test (`deb-smoke-test: true`) skips, with a warning, a package whose architecture the Docker host cannot run, like arm64 on an amd64 GitHub Actions runner, instead of failing with `exec format error`. The package is still built and released, only its install is not tested.
 
 ## v0.19.4

@@ -7,7 +7,7 @@ This is a tool we use internally at StreamingFast to automate release process in
 - Language: `Golang`, Variant: `Application`
 - Language: `Golang`, Variant: `Library`
 - Language: `Rust`, Variant: `Library`
-- Variant: `Chain`, any language: the release is only its tag, the repository's own workflows build from it
+- Variant: `Chain`, any language: the release is only its tag, the repository's own workflows build from it. With `kind: application` (`global.kind`, `--kind`), it is a full GitHub release instead, see below
 
 The `sfreleaser` usually simply wraps instructions for other tools, mainly:
 
@@ -16,6 +16,18 @@ The `sfreleaser` usually simply wraps instructions for other tools, mainly:
 - [docker](https://docker.com)
 
 The `sfreleaser release` usually builds the necessary artifacts, configures `goreleaser`, uploads extra artifacts if necessary and performs the release on GitHub in draft mode. You have then the possibility to review it and publish it.
+
+### Chain variant
+
+A `variant: chain` project is released by its own workflows, so by default (or with `kind: library`) `sfreleaser release` only checks the changelog and creates the tag. With `kind: application`, the release is a full GitHub release without any artifact built by `sfreleaser`: `release prepare` creates the draft release (notes from the changelog, marked as pre-release for a pre-release version) and `release publish` publishes it on the merge commit. The binaries are then uploaded by the repository's own workflow, once the release is published:
+
+```yaml
+global:
+  variant: chain
+  kind: application
+```
+
+`kind` is only valid with the `chain` variant, a configuration without it is unchanged.
 
 ### Running in CI
 
