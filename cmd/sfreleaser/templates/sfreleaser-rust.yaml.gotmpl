@@ -1,6 +1,6 @@
 global:
   language: {{ .global.Language | lower }}
-  kind: {{ .global.Kind }}
+  kind: {{ .global.Kind | lower }}
   {{- if .global.NeedsVariant }}
   variant: {{ .global.Variant | lower }}
   {{- end }}

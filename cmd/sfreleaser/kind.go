@@ -9,27 +9,47 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/streamingfast/cli"
 	"github.com/streamingfast/cli/sflags"
+	"go.uber.org/zap"
 )
 
-const (
-	// KindApplication is a project releasing an application, with a 'chain' variant it gets
-	// a full GitHub release whose binaries are uploaded by the repository's own workflows.
-	KindApplication = "application"
+//go:generate go-enum -f=$GOFILE --marshal --names --nocase
 
-	// KindLibrary is a project releasing a library, with a 'chain' variant it is only its tag.
-	KindLibrary = "library"
-)
+// ENUM(
+//
+//	Unset
+//	Application
+//	Library
+//
+// )
+type Kind uint
 
-// resolveKindVariant resolves the 'kind' (application or library) and the 'variant' of a project
-// from the configured values. The 'kind' is the main key, the 'application' and 'library'
-// variants being its deprecated spelling, 'deprecated' reports that one was used. A kind without
-// variant is its own variant, 'substreams' and 'chain' variants without kind are libraries.
-func resolveKindVariant(rawKind string, variant Variant) (kind string, resolved Variant, deprecated bool, err error) {
-	kind = strings.ToLower(rawKind)
-	if kind != "" && kind != KindApplication && kind != KindLibrary {
-		return "", variant, false, fmt.Errorf("the kind %q is invalid, use %q or %q", rawKind, KindApplication, KindLibrary)
+func (k Kind) Lower() string {
+	return strings.ToLower(k.String())
+}
+
+func mustGetKind(cmd *cobra.Command) Kind {
+	raw := sflags.MustGetString(cmd, "kind")
+	zlog.Debug("raw read kind", zap.String("raw", raw))
+
+	if raw == "" {
+		return KindUnset
 	}
 
+	kind, err := ParseKind(raw)
+	cli.NoError(err, "Invalid")
+
+	return kind
+}
+
+func isSupportedKind(x string) bool {
+	return x != KindUnset.String()
+}
+
+// resolveKindVariant resolves the kind and the variant of a project from the configured
+// values. The kind is the main key, the 'application' and 'library' variants being its
+// deprecated spelling, 'deprecated' reports that one was used. A kind without variant is its
+// own variant, 'substreams' and 'chain' variants without kind are libraries.
+func resolveKindVariant(kind Kind, variant Variant) (resolvedKind Kind, resolvedVariant Variant, deprecated bool, err error) {
 	switch variant {
 	case VariantUnset:
 		switch kind {
@@ -38,22 +58,22 @@ func resolveKindVariant(rawKind string, variant Variant) (kind string, resolved 
 		case KindLibrary:
 			return kind, VariantLibrary, false, nil
 		}
-		return "", VariantUnset, false, nil
+		return KindUnset, VariantUnset, false, nil
 
 	case VariantApplication, VariantLibrary:
-		if kind != "" && kind != variant.Lower() {
-			return "", variant, false, fmt.Errorf("the kind %q conflicts with the variant %q", kind, variant.Lower())
+		if kind != KindUnset && kind.Lower() != variant.Lower() {
+			return kind, variant, false, fmt.Errorf("the kind %q conflicts with the variant %q", kind.Lower(), variant.Lower())
 		}
-		return variant.Lower(), variant, true, nil
+		return kindOf(variant), variant, true, nil
 
 	case VariantSubstreams:
 		if kind == KindApplication {
-			return "", variant, false, fmt.Errorf("the kind %q is not supported yet for the %q variant, only %q is", kind, variant.Lower(), KindLibrary)
+			return kind, variant, false, fmt.Errorf("the kind %q is not supported yet for the %q variant, only %q is", kind.Lower(), variant.Lower(), KindLibrary.Lower())
 		}
 		return KindLibrary, variant, false, nil
 
 	default:
-		if kind == "" {
+		if kind == KindUnset {
 			kind = KindLibrary
 		}
 		return kind, variant, false, nil
@@ -64,13 +84,13 @@ var warnDeprecatedVariantOnce sync.Once
 
 // mustGetKindVariant reads the 'kind' and 'variant' flags and resolves them, quitting when
 // they are invalid, see [resolveKindVariant].
-func mustGetKindVariant(cmd *cobra.Command) (string, Variant) {
-	kind, variant, deprecated, err := resolveKindVariant(sflags.MustGetString(cmd, "kind"), mustGetVariant(cmd))
+func mustGetKindVariant(cmd *cobra.Command) (Kind, Variant) {
+	kind, variant, deprecated, err := resolveKindVariant(mustGetKind(cmd), mustGetVariant(cmd))
 	cli.NoError(err, "Invalid kind and variant")
 
 	if deprecated {
 		warnDeprecatedVariantOnce.Do(func() {
-			fmt.Fprintf(os.Stderr, "Warning: the variant %q is deprecated, use \"kind: %s\" (\"global.kind\" in the \".sfreleaser\" file or the \"--kind\" flag) instead\n", variant.Lower(), kind)
+			fmt.Fprintf(os.Stderr, "Warning: the variant %q is deprecated, use \"kind: %s\" (\"global.kind\" in the \".sfreleaser\" file or the \"--kind\" flag) instead\n", variant.Lower(), kind.Lower())
 		})
 	}
 
@@ -78,12 +98,12 @@ func mustGetKindVariant(cmd *cobra.Command) (string, Variant) {
 }
 
 // kindOf is the kind of a project of the given variant when the kind is not configured.
-func kindOf(variant Variant) string {
+func kindOf(variant Variant) Kind {
 	switch variant {
 	case VariantApplication:
 		return KindApplication
 	case VariantUnset:
-		return ""
+		return KindUnset
 	default:
 		return KindLibrary
 	}

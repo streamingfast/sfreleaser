@@ -21,12 +21,12 @@ type GlobalModel struct {
 	Project  string
 	Binary   string
 	Language Language
-	License  string
-	Variant  Variant
 
-	// Kind is the kind of the project, one of [KindApplication] or [KindLibrary], resolved
-	// from the configured kind and variant by [resolveKindVariant], empty when neither is set.
-	Kind string
+	// Kind is resolved from the configured kind and variant by [resolveKindVariant], unset
+	// when neither is set.
+	Kind    Kind
+	License string
+	Variant Variant
 
 	// The root of the project as provided by the user, never modified,
 	// most usage should use `WorkingDirectory` instead which is computed
@@ -66,7 +66,7 @@ func (g *GlobalModel) MarshalLogObject(encoder zapcore.ObjectEncoder) error {
 	encoder.AddString("language", g.Language.String())
 	encoder.AddString("license", g.License)
 	encoder.AddString("variant", g.Variant.String())
-	encoder.AddString("kind", g.Kind)
+	encoder.AddString("kind", g.Kind.String())
 	encoder.AddString("config_root", g.ConfigRoot)
 	encoder.AddString("working_directory", g.WorkingDirectory)
 	encoder.AddString("git_remote", g.GitRemote)
