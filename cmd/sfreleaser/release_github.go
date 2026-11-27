@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"slices"
 	"sort"
@@ -220,7 +221,8 @@ func releaseGithubDraft(global *GlobalModel, release *ReleaseModel, githubReleas
 		"--notes-file", "'" + githubRelease.ReleaseNotesPath + "'",
 	}
 
-	if isPrereleaseVersion(release.Version) {
+	prerelease := isPrereleaseVersion(release.Version)
+	if prerelease {
 		args = append(args, "--prerelease")
 	}
 
@@ -238,7 +240,11 @@ func releaseGithubDraft(global *GlobalModel, release *ReleaseModel, githubReleas
 	}
 
 	fmt.Println()
-	fmt.Printf("Creating draft release %s with gh\n", release.Version)
+	if prerelease {
+		fmt.Printf("Creating draft release %s with gh, marked as pre-release\n", release.Version)
+	} else {
+		fmt.Printf("Creating draft release %s with gh\n", release.Version)
+	}
 	run(args...)
 }
 
@@ -355,11 +361,27 @@ func releaseGithubNative(global *GlobalModel, release *ReleaseModel, githubRelea
 	}
 }
 
-// isPrereleaseVersion reports whether version has a semver pre-release suffix, such as
-// 'v1.2.0-rc.1', the versions Goreleaser's 'prerelease: auto' marked as pre-release.
+// prereleaseVersionRegex splits a version in its release line prefix, like 'reth-', its
+// numbers and its suffix.
+var prereleaseVersionRegex = regexp.MustCompile(`^(?:[a-z][a-z0-9-]*?-)?v?[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?(.*)$`)
+
+// prereleaseIdentifierRegex matches an identifier of the suffix marking a pre-release, like
+// 'rc' in 'v1.2.0-rc.1' or 'alpha1'.
+var prereleaseIdentifierRegex = regexp.MustCompile(`^(alpha|beta|rc|pre|preview|dev|nightly|snapshot|test)[0-9]*$`)
+
+// isPrereleaseVersion reports whether version is a pre-release: an identifier of its suffix,
+// split on '-' and '.', is a pre-release keyword, like 'v1.2.0-rc.1' or
+// 'reth-v3.0.0-beta.1-fh3.1'. The release line prefix and a suffix like the Firehose one of
+// 'reth-v2.11.0-fh3.1-2' do not make a pre-release.
 func isPrereleaseVersion(version string) bool {
-	core, _, _ := strings.Cut(strings.TrimPrefix(version, "v"), "+")
-	return strings.Contains(core, "-")
+	version, _, _ = strings.Cut(strings.ToLower(version), "+")
+
+	matches := prereleaseVersionRegex.FindStringSubmatch(version)
+	if matches == nil {
+		return false
+	}
+
+	return slices.ContainsFunc(strings.FieldsFunc(matches[1], func(r rune) bool { return r == '-' || r == '.' }), prereleaseIdentifierRegex.MatchString)
 }
 
 // defaultArchiveFiles are the files of root Goreleaser archived next to the binary when the

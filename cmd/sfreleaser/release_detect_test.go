@@ -83,6 +83,16 @@ func Test_releaseComment(t *testing.T) {
 			"### Merging this PR will only tag v1.2.0\n\n> [!NOTE]\n> 🏷️ Tag only: nothing is built, no GitHub release is created and nothing is published.\n\n- Creates the tag `v1.2.0` on the merge commit\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>",
 		},
 		{
+			"pre-release pending",
+			releaseComment{Version: "reth-v3.0.0-beta.1-fh3.1", Status: releaseCommentPending},
+			"### Merging this PR will release reth-v3.0.0-beta.1-fh3.1 (🧪 pre-release)\n\n> [!WARNING]\n> ⏳ The release is being drafted, wait for the workflow run to complete before merging.\n\n<details><summary>Release notes</summary>\n\n_No release notes in the changelog._\n\n</details>",
+		},
+		{
+			"firehose suffix is not a pre-release",
+			releaseComment{Version: "reth-v2.11.0-fh3.1-2", Notes: "- Feature", Status: releaseCommentReady},
+			"### Merging this PR will release reth-v2.11.0-fh3.1-2\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>",
+		},
+		{
 			"tag only failed",
 			releaseComment{Version: "v1.2.0", Status: releaseCommentFailed, RunURL: "https://r", TagOnly: true},
 			"### Merging this PR will only tag v1.2.0\n\n> [!NOTE]\n> 🏷️ Tag only: nothing is built, no GitHub release is created and nothing is published.\n\n> [!CAUTION]\n> ❌ Checking the tag failed, see the [workflow run](https://r). Do not merge before it succeeds.\n\n<details><summary>Release notes</summary>\n\n_No release notes in the changelog._\n\n</details>",

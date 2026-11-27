@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.20.2
+
+### Changed
+
+- A release pull request comment, and the `preview_comment` output of `release detect`, now marks a pre-release version with `(🧪 pre-release)` after it in its heading, so a wrong pre-release flag is caught before merging. `release prepare` also says it when creating the draft.
+
+### Fixed
+
+- Fix versions with a release line prefix or a Firehose suffix, like `reth-v2.11.0-fh3.1-2`, being drafted as pre-releases. A version is now a pre-release only when its suffix has a pre-release identifier (`alpha`, `beta`, `rc`, `pre`, `preview`, `dev`, `nightly`, `snapshot` or `test`, optionally followed by digits), like `v1.2.0-rc.1` or `reth-v3.0.0-beta.1-fh3.1`.
+- Fix release notes breaking lines in the middle of sentences on GitHub. GitHub renders every line break of a release body or a comment, so the soft-wrapped lines of each changelog paragraph and list item are now joined into one line. Code blocks, tables, headings, block quotes and HTML are kept as is.
+
 ## v0.20.1
 
 - The release pull request comment of a tag only release (`chain` variant without `kind: application`) says the merge will only tag the version, that nothing is built, released on GitHub nor published, and that the tag, not the release, is being checked. The `preview_comment` output of `release detect` says the same.

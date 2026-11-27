@@ -166,11 +166,21 @@ func Test_validVersion_whitespace(t *testing.T) {
 
 func Test_isPrereleaseVersion(t *testing.T) {
 	for version, expected := range map[string]bool{
-		"v1.2.0":              false,
-		"v1.2.0-rc.1":         true,
-		"1.2.0-beta":          true,
-		"v1.2.0+build-42":     false,
-		"v1.2.0-rc.1+build.7": true,
+		"v1.2.0":                   false,
+		"v1.2.0-rc.1":              true,
+		"1.2.0-beta":               true,
+		"v1.2.0+build-42":          false,
+		"v1.2.0-rc.1+build.7":      true,
+		"v1.2.0-alpha1":            true,
+		"reth-v2.11.0-fh3.1":       false,
+		"reth-v2.11.0-fh3.1-2":     false,
+		"world-chain-v2.6.0-fh3.1": false,
+		"base-v2.5.2.8-fh3.1-2":    false,
+		"v4.1.5-evm-devnet-fh3.0":  false,
+		"reth-v3.0.0-beta.1-fh3.1": true,
+		"reth-3.0.0-beta.1-fh3.1":  true,
+		"reth-v2.9.0-fh3.1-not-a-real-version-alpha.2": true,
+		"op-reth-v2.6.1-RC2":                           true,
 	} {
 		assert.Equal(t, expected, isPrereleaseVersion(version), version)
 	}

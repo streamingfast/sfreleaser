@@ -137,7 +137,7 @@ This is empty.`,
   with multiline
 
 - Third feature`,
-			want: "- First feature\n\n- Second feature\n  with multiline\n\n- Third feature",
+			want: "- First feature\n\n- Second feature with multiline\n\n- Third feature",
 		},
 		{
 			name: "multiple sections stops at second header",
@@ -178,6 +178,39 @@ This is empty.`,
 			tmpFile := createTempChangelog(t, tt.content)
 			got := readReleaseNotes(tmpFile)
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_unwrapMarkdown(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"single line", "- Feature", "- Feature"},
+		{"paragraph", "First line\nsecond line\nthird line", "First line second line third line"},
+		{
+			"list items",
+			"- Stop the path\n  ([org/repo#110](https://x/110)). It stamped each\n  block with its number.\n- Second item\n  wrapped.",
+			"- Stop the path ([org/repo#110](https://x/110)). It stamped each block with its number.\n- Second item wrapped.",
+		},
+		{"nested list", "- Parent\n  wrapped\n  - Child\n    wrapped", "- Parent wrapped\n  - Child wrapped"},
+		{"ordered list", "1. First\n   wrapped\n2. Second", "1. First wrapped\n2. Second"},
+		{"headings and paragraphs", "### Added\n\n- Item\n  wrapped\n\nParagraph\nwrapped\n### Fixed", "### Added\n\n- Item wrapped\n\nParagraph wrapped\n### Fixed"},
+		{"fenced code", "Text\n```go\na := 1\nb := 2\n```\nAfter\nwrapped", "Text\n```go\na := 1\nb := 2\n```\nAfter wrapped"},
+		{"indented fenced code in list", "- Item\n  ```\n  x\n  y\n  ```", "- Item\n  ```\n  x\n  y\n  ```"},
+		{"table", "| a | b |\n|---|---|\n| 1 | 2 |", "| a | b |\n|---|---|\n| 1 | 2 |"},
+		{"block quote", "> [!NOTE]\n> Quoted", "> [!NOTE]\n> Quoted"},
+		{"html", "<details>\n<summary>S</summary>\n</details>", "<details>\n<summary>S</summary>\n</details>"},
+		{"hard breaks", "Two spaces  \nnext\n\nBackslash\\\nnext", "Two spaces  \nnext\n\nBackslash\\\nnext"},
+		{"hard break after join", "First\nsecond  \nthird", "First second  \nthird"},
+		{"thematic break", "Text\n---\nMore", "Text\n---\nMore"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, unwrapMarkdown(tt.in))
 		})
 	}
 }

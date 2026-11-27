@@ -122,7 +122,56 @@ func readReleaseNotes(changelogFile string) string {
 	zlog.Debug("computed changelog lines", zap.Strings("release_lines", releaseNotes))
 
 	cli.NoError(scanner.Err(), "Unable to scan lines from changelog")
-	return trimBlankLines(strings.Join(releaseNotes, "\n"))
+	return unwrapMarkdown(trimBlankLines(strings.Join(releaseNotes, "\n")))
+}
+
+var (
+	markdownFenceRegex      = regexp.MustCompile("^(```|~~~)")
+	markdownListItemRegex   = regexp.MustCompile(`^([-*+]|[0-9]+[.)])(\s|$)`)
+	markdownThematicRegex   = regexp.MustCompile(`^(-{3,}|\*{3,}|_{3,}|=+)$`)
+	markdownBlockStartRunes = "#>|<"
+)
+
+// unwrapMarkdown joins the soft-wrapped lines of each paragraph and list item into a single
+// line. GitHub renders each line break of a release body or a comment as a hard break, so a
+// changelog wrapped at some column breaks its sentences there. Code blocks, headings, tables,
+// HTML, block quotes, thematic breaks and hard breaks (two trailing spaces or a '\') are kept
+// as is.
+func unwrapMarkdown(in string) string {
+	var out []string
+	inFence, joinable := false, false
+
+	for line := range strings.Lines(in) {
+		line = strings.TrimRight(line, "\r\n")
+		trimmed := strings.TrimSpace(line)
+
+		if markdownFenceRegex.MatchString(trimmed) {
+			inFence = !inFence
+			out = append(out, line)
+			joinable = false
+			continue
+		}
+
+		if inFence || trimmed == "" {
+			out = append(out, line)
+			joinable = false
+			continue
+		}
+
+		otherBlock := strings.ContainsAny(trimmed[:1], markdownBlockStartRunes) || markdownThematicRegex.MatchString(trimmed)
+		hardBreak := strings.HasSuffix(line, "  ") || strings.HasSuffix(line, "\\")
+
+		if joinable && !otherBlock && !markdownListItemRegex.MatchString(trimmed) {
+			out[len(out)-1] += " " + strings.TrimLeft(line, " \t")
+		} else {
+			out = append(out, line)
+		}
+
+		// A paragraph or a list item goes on with the next line, unless it ends with a hard break.
+		joinable = !otherBlock && !hardBreak
+	}
+
+	return strings.Join(out, "\n")
 }
 
 func validateChangelogForVersion(changelogFile string, version string) (warning string, err error) {
