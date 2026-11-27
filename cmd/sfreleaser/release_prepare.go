@@ -65,6 +65,7 @@ func releasePrepare(cmd *cobra.Command, args []string) (err error) {
 	}()
 
 	if releaseTagsOnly(global) {
+		comment.comment.TagOnly = true
 		return prepareTagRelease(cmd, global, args[0], comment)
 	}
 

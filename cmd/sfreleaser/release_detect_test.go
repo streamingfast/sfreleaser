@@ -51,8 +51,9 @@ func Test_detectRelease(t *testing.T) {
 }
 
 func Test_detectOutputs(t *testing.T) {
-	assert.Equal(t, [][2]string{{"version", ""}, {"is_release_pr", ""}, {"preview_comment", ""}}, detectOutputs("", "", ""))
-	assert.Equal(t, [][2]string{{"version", "v1.2.0"}, {"is_release_pr", "true"}, {"preview_comment", "### Merging this PR will release v1.2.0\n\n> [!WARNING]\n> ⏳ The release is being drafted, wait for the [workflow run](https://r) to complete before merging.\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>"}}, detectOutputs("v1.2.0", "- Feature", "https://r"))
+	assert.Equal(t, [][2]string{{"version", ""}, {"is_release_pr", ""}, {"preview_comment", ""}}, detectOutputs("", "", "", false))
+	assert.Equal(t, [][2]string{{"version", "v1.2.0"}, {"is_release_pr", "true"}, {"preview_comment", "### Merging this PR will release v1.2.0\n\n> [!WARNING]\n> ⏳ The release is being drafted, wait for the [workflow run](https://r) to complete before merging.\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>"}}, detectOutputs("v1.2.0", "- Feature", "https://r", false))
+	assert.Equal(t, [][2]string{{"version", "v1.2.0"}, {"is_release_pr", "true"}, {"preview_comment", "### Merging this PR will only tag v1.2.0\n\n> [!NOTE]\n> 🏷️ Tag only: nothing is built, no GitHub release is created and nothing is published.\n\n> [!WARNING]\n> ⏳ The tag is being checked, wait for the [workflow run](https://r) to complete before merging.\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>"}}, detectOutputs("v1.2.0", "- Feature", "https://r", true))
 }
 
 func Test_releaseComment(t *testing.T) {
@@ -75,6 +76,16 @@ func Test_releaseComment(t *testing.T) {
 			"failed with problems",
 			releaseComment{Version: "v1.2.0", Notes: "- Feature", Status: releaseCommentFailed, RunURL: "https://r", Problems: []string{"Stale lock"}},
 			"### Merging this PR will release v1.2.0\n\n> [!CAUTION]\n> ❌ Drafting the release failed, see the [workflow run](https://r). Do not merge before it succeeds.\n\n#### ⚠️ Preparation\n\n- Stale lock\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>",
+		},
+		{
+			"tag only ready",
+			releaseComment{Version: "v1.2.0", Notes: "- Feature", Status: releaseCommentReady, TagOnly: true, Steps: []string{"Creates the tag `v1.2.0` on the merge commit"}},
+			"### Merging this PR will only tag v1.2.0\n\n> [!NOTE]\n> 🏷️ Tag only: nothing is built, no GitHub release is created and nothing is published.\n\n- Creates the tag `v1.2.0` on the merge commit\n\n<details><summary>Release notes</summary>\n\n- Feature\n\n</details>",
+		},
+		{
+			"tag only failed",
+			releaseComment{Version: "v1.2.0", Status: releaseCommentFailed, RunURL: "https://r", TagOnly: true},
+			"### Merging this PR will only tag v1.2.0\n\n> [!NOTE]\n> 🏷️ Tag only: nothing is built, no GitHub release is created and nothing is published.\n\n> [!CAUTION]\n> ❌ Checking the tag failed, see the [workflow run](https://r). Do not merge before it succeeds.\n\n<details><summary>Release notes</summary>\n\n_No release notes in the changelog._\n\n</details>",
 		},
 	}
 

@@ -81,7 +81,7 @@ func releaseDetect(cmd *cobra.Command, _ []string) error {
 			notes = readReleaseNotes(changelogPath)
 		}
 
-		for _, out := range detectOutputs(version, notes, gitHubRunURL()) {
+		for _, out := range detectOutputs(version, notes, gitHubRunURL(), releaseTagsOnly(global)) {
 			if err := writeGitHubOutput(output, out[0], out[1]); err != nil {
 				return fmt.Errorf("writing GitHub output: %w", err)
 			}
@@ -95,12 +95,12 @@ func releaseDetect(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func detectOutputs(version, notes, runURL string) [][2]string {
+func detectOutputs(version, notes, runURL string, tagOnly bool) [][2]string {
 	if version == "" {
 		return [][2]string{{"version", ""}, {"is_release_pr", ""}, {"preview_comment", ""}}
 	}
 
-	return [][2]string{{"version", version}, {"is_release_pr", "true"}, {"preview_comment", releaseComment{Version: version, Notes: notes, Status: releaseCommentPending, RunURL: runURL}.Markdown()}}
+	return [][2]string{{"version", version}, {"is_release_pr", "true"}, {"preview_comment", releaseComment{Version: version, Notes: notes, Status: releaseCommentPending, RunURL: runURL, TagOnly: tagOnly}.Markdown()}}
 }
 
 // releaseCommentStatus is where the draft flow of a release pull request stands, shown as a
@@ -127,6 +127,8 @@ type releaseComment struct {
 	Steps []string
 	// Problems are what the release commit misses, in Markdown.
 	Problems []string
+	// TagOnly is a release that is only its tag: nothing is built, drafted nor published.
+	TagOnly bool
 }
 
 // Markdown renders the comment: the status notice, the steps of the release as a list and the
@@ -143,12 +145,20 @@ func (c releaseComment) Markdown() string {
 	}
 
 	var comment strings.Builder
-	fmt.Fprintf(&comment, "### Merging this PR will release %s\n\n", c.Version)
+	pending, failed := "The release is being drafted", "Drafting the release failed"
+	if c.TagOnly {
+		pending, failed = "The tag is being checked", "Checking the tag failed"
+		fmt.Fprintf(&comment, "### Merging this PR will only tag %s\n\n", c.Version)
+		comment.WriteString("> [!NOTE]\n> 🏷️ Tag only: nothing is built, no GitHub release is created and nothing is published.\n\n")
+	} else {
+		fmt.Fprintf(&comment, "### Merging this PR will release %s\n\n", c.Version)
+	}
+
 	switch c.Status {
 	case releaseCommentPending:
-		fmt.Fprintf(&comment, "> [!WARNING]\n> ⏳ The release is being drafted, wait for the %s to complete before merging.\n\n", run)
+		fmt.Fprintf(&comment, "> [!WARNING]\n> ⏳ %s, wait for the %s to complete before merging.\n\n", pending, run)
 	case releaseCommentFailed:
-		fmt.Fprintf(&comment, "> [!CAUTION]\n> ❌ Drafting the release failed, see the %s. Do not merge before it succeeds.\n\n", run)
+		fmt.Fprintf(&comment, "> [!CAUTION]\n> ❌ %s, see the %s. Do not merge before it succeeds.\n\n", failed, run)
 	}
 	if len(c.Problems) > 0 {
 		comment.WriteString("#### ⚠️ Preparation\n\n")
