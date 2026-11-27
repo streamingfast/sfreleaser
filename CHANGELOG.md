@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.20.1
+
+- The release pull request comment of a tag only release (`chain` variant without `kind: application`) says the merge will only tag the version, that nothing is built, released on GitHub nor published, and that the tag, not the release, is being checked. The `preview_comment` output of `release detect` says the same.
+
 ## v0.20.0
 
 - Add `kind` (`global.kind`, `--kind`), `application` or `library`, as the main project key. `variant: application` and `variant: library` still work but are deprecated with a warning, they equal `kind: application` and `kind: library`. A `substreams` or `chain` variant without kind is a `library`. `sfreleaser init` now writes `kind`, and `variant` only for `substreams` and `chain`.
