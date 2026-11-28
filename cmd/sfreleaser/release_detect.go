@@ -150,6 +150,8 @@ func (c releaseComment) Markdown() string {
 		pending, failed = "The tag is being checked", "Checking the tag failed"
 		fmt.Fprintf(&comment, "### Merging this PR will only tag %s\n\n", c.Version)
 		comment.WriteString("> [!NOTE]\n> 🏷️ Tag only: nothing is built, no GitHub release is created and nothing is published.\n\n")
+	} else if isPrereleaseVersion(c.Version) {
+		fmt.Fprintf(&comment, "### Merging this PR will release %s (🧪 pre-release)\n\n", c.Version)
 	} else {
 		fmt.Fprintf(&comment, "### Merging this PR will release %s\n\n", c.Version)
 	}
