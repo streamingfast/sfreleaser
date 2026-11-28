@@ -91,6 +91,7 @@ func main() {
 			flags.StringP("repository", "r", "", "GitHub repository in format <owner>/<project> (e.g., streamingfast/firehose-core). Accepts github.com/ or https://github.com/ prefix. Cannot be used with --owner or --project")
 			flags.String("root", "", "If defined, change the working directory of the process before proceeding with the release")
 			flags.String("sfreleaser-min-version", "", "If sets, will check that the version of sfreleaser is at least this version before attempting the build")
+			flags.String("build-dir", "", "The directory generated files and binaries are written to, relative to the working directory when not absolute, defaults to '$RUNNER_TEMP/sfreleaser/<project>' on GitHub Actions, else to a per-project directory of the sfreleaser cache directory, never inside the project so Git stays clean")
 			flags.String("git-remote", "origin", "The git remote to use for pushing the release and commits")
 			flags.Bool("non-interactive", false, "Never prompt, every question is answered 'no' (or 'yes' with --yes) and values that would be asked for must be provided, enabled automatically when the CI environment variable is true, meant for unattended runs")
 			flags.Bool("yes", false, "Answer 'yes' to every confirmation without asking, for 'release' that deletes an existing draft release, 'git pull' a stale checkout and publishes the release right now, a published release is never deleted")

@@ -301,18 +301,16 @@ func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bo
 
 	ensureGitSync(global)
 
-	buildDirectory := "build"
+	buildDirectory := global.BuildDirectory
 	envFilePath := filepath.Join(buildDirectory, ".env.release")
 	releaseNotesPath := filepath.Join(buildDirectory, ".release_notes.md")
 
-	cli.NoError(os.MkdirAll(buildDirectory, os.ModePerm), "Unable to create build directory")
+	prepareBuildDirectory(global)
 	if !usesGoreleaser(global, release) || release.Builder != BuilderNative {
 		configureGitHubTokenEnvFile(envFilePath)
 	}
 	cli.WriteFile(releaseNotesPath, "%s", readReleaseNotes(changelogPath))
 
-	// By doing this after creating the build directory and release notes, we ensure
-	// that those are ignored, the user will need to ignore them to process (or --allow-dirty).
 	if !allowDirty {
 		ensureGitNotDirty()
 	}
@@ -320,7 +318,7 @@ func draftRelease(cmd *cobra.Command, args []string, publishNow, brewDeferred bo
 	if uploadSubstreamsSPKG != "" {
 		if !strings.HasSuffix(uploadSubstreamsSPKG, ".spkg") {
 			manifestFile := uploadSubstreamsSPKG
-			uploadSubstreamsSPKG = filepath.Join("{{ .buildDir }}", global.Project+"-"+version+".spkg")
+			uploadSubstreamsSPKG = filepath.Join(buildDirectory, global.Project+"-"+version+".spkg")
 
 			zlog.Warn(fmt.Sprintf(`the 'upload-substreams-spkg' flag is deprecated, use a custom "pre-build-hooks: ['substreams pack -o "{{ .buildDir }}/substreams-{{ .release.Version }}.spkg" %s'] to package it and 'upload-extra-assets: ['{{ .buildDir }}/substreams-{{ .version }}.spkg'] to attach it to the release`, manifestFile))
 			preBuildHooks = append(preBuildHooks, fmt.Sprintf("substreams pack -o '%s' '%s'", global.ResolveFile(uploadSubstreamsSPKG), global.ResolveFile(manifestFile)))

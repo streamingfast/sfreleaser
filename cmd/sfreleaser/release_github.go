@@ -117,6 +117,8 @@ func goreleaseDockerCommand(global *GlobalModel, githubRelease *GitHubReleaseMod
 		"--env-file", githubRelease.EnvFilePath,
 		"-v /var/run/docker.sock:/var/run/docker.sock",
 		"-v", cli.WorkingDirectory() + ":/go/src/work",
+		// Mounted at the same path so the paths of the generated files are the same in the container.
+		"-v", global.BuildDirectory + ":" + global.BuildDirectory,
 		"-w /go/src/work",
 	}
 
@@ -275,7 +277,7 @@ func findSubstreamsPackages(root string) ([]string, error) {
 // did and creates the draft release with them, then updates the Homebrew formula unless
 // disabled.
 func releaseGithubNative(global *GlobalModel, release *ReleaseModel, githubRelease *GitHubReleaseModel) {
-	outputDir := filepath.Join("build", "dist")
+	outputDir := filepath.Join(global.BuildDirectory, "dist")
 
 	fmt.Println()
 	fmt.Printf("Building %d target(s) with the native builder\n", len(nativeTargets))

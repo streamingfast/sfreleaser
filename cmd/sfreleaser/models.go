@@ -57,6 +57,10 @@ type GlobalModel struct {
 	// The value is first initialized to `os.Getwd()`, if `Root` is set, [WorkingDirectory]
 	// is set to `cli.AbsolutePath(Root)`.
 	WorkingDirectory string
+
+	// BuildDirectory is the absolute path to the directory generated files and binaries are
+	// written to, outside of the project by default, see [resolveBuildDirectory].
+	BuildDirectory string
 }
 
 func (g *GlobalModel) MarshalLogObject(encoder zapcore.ObjectEncoder) error {
@@ -69,6 +73,7 @@ func (g *GlobalModel) MarshalLogObject(encoder zapcore.ObjectEncoder) error {
 	encoder.AddString("kind", g.Kind.String())
 	encoder.AddString("config_root", g.ConfigRoot)
 	encoder.AddString("working_directory", g.WorkingDirectory)
+	encoder.AddString("build_directory", g.BuildDirectory)
 	encoder.AddString("git_remote", g.GitRemote)
 
 	return nil
@@ -155,6 +160,7 @@ func mustGetGlobal(cmd *cobra.Command) *GlobalModel {
 	}
 
 	global.ConfigRoot = findSfreleaserDir(global.WorkingDirectory)
+	global.BuildDirectory = mustResolveBuildDirectory(sflags.MustGetString(cmd, "build-dir"), global.WorkingDirectory, global.Project)
 
 	return global
 }
