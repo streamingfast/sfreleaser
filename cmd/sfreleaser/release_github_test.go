@@ -114,6 +114,7 @@ func newReleaseGithubArgs(customize func(*testing.T, *releaseGithubArgs)) func(t
 				Root:             tmpRoot,
 				ConfigRoot:       tmpRoot,
 				WorkingDirectory: tmpRoot,
+				BuildDirectory:   "/tmp/sfreleaser-build",
 				Variant:          VariantApplication,
 			},
 			release: &ReleaseModel{

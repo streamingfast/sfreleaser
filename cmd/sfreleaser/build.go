@@ -148,16 +148,14 @@ func build(cmd *cobra.Command, args []string) error {
 	version := build.Version
 	fmt.Printf("Building %q ...\n", version)
 
-	buildDirectory := "build"
+	buildDirectory := global.BuildDirectory
 	envFilePath := filepath.Join(buildDirectory, ".env.release")
 
-	cli.NoError(os.MkdirAll(buildDirectory, os.ModePerm), "Unable to create build directory")
+	prepareBuildDirectory(global)
 	if build.Builder != BuilderNative {
 		configureGitHubTokenEnvFile(envFilePath)
 	}
 
-	// By doing this after creating the build directory and release notes, we ensure
-	// that those are ignored, the user will need to ignore them to process (or --allow-dirty).
 	if !allowDirty {
 		ensureGitNotDirty()
 	}
@@ -237,11 +235,9 @@ func buildRustCrates(cmd *cobra.Command, global *GlobalModel, version string, al
 	verifyRustTools()
 	rust.SinglePublishInvocation = resolveRustCratesSinglePublishInvocation(rust.CratesPublishMode)
 
-	buildDirectory := "build"
-	cli.NoError(os.MkdirAll(buildDirectory, os.ModePerm), "Unable to create build directory")
+	buildDirectory := global.BuildDirectory
+	prepareBuildDirectory(global)
 
-	// By doing this after creating the build directory, we ensure that it's ignored, the user
-	// will need to ignore it to proceed (or --allow-dirty).
 	if !allowDirty {
 		ensureGitNotDirty()
 	}
@@ -330,7 +326,7 @@ func selectSubstreamsPackageForRelease(version string) (string, error) {
 }
 
 // buildNativeArtifacts builds the selected binaries with the native builder into
-// 'build/dist/<target>/<binary>'.
+// '<build directory>/dist/<target>/<binary>'.
 func buildNativeArtifacts(global *GlobalModel, build *BuildModel, targets []nativeTarget) error {
 	// Like Goreleaser: a versioned build stamps the version without its 'v', a snapshot the
 	// latest tag as is.
@@ -348,7 +344,7 @@ func buildNativeArtifacts(global *GlobalModel, build *BuildModel, targets []nati
 			Version:     version,
 			CgoDisabled: build.CgoDisabled,
 			Targets:     targets,
-			OutputDir:   filepath.Join("build", "dist"),
+			OutputDir:   filepath.Join(global.BuildDirectory, "dist"),
 			ZigPath:     build.ZigPath,
 		})
 		return err

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+
+- The build directory (Goreleaser configuration, release notes, token env file, binaries, Goreleaser `dist`) is now outside of the project, so the Git dirty check no longer fails on a non-ignored `build/` (or `dist/`): `$RUNNER_TEMP/sfreleaser/<project>` on GitHub Actions, else `<user cache dir>/sfreleaser/build/<project>-<hash>`. Its path is printed on every run, and `{{ .buildDir }}` in hooks and extra assets is now this absolute path. Override it with the global `--build-dir` flag (config at `global.build-dir`), `--build-dir build` restoring the previous location.
+- The token env file `.env.release` is written readable only by the user.
+
 ## v0.20.2
 
 ### Changed

@@ -1,5 +1,7 @@
 version: 2
 
+dist: /tmp/sfreleaser-build/dist
+
 env_files:
   github_token: ~/.config/goreleaser/github_token
 

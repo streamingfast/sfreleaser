@@ -38,7 +38,8 @@ func configureGitHubTokenEnvFile(releaseEnvFile string) {
 		content += fmt.Sprintf("\n%s=%s", homebrewTapTokenEnv, tapToken)
 	}
 
-	cli.WriteFile(releaseEnvFile, "%s", content)
+	// Holds tokens, only the user can read it.
+	cli.NoError(os.WriteFile(releaseEnvFile, []byte(content), 0o600), "Unable to write %q", releaseEnvFile)
 }
 
 // useGitHubTokenForGh makes every 'gh' call of this process authenticate with the release token,
